@@ -1,0 +1,955 @@
+Tu es maintenant l'architecte logiciel principal, Product Manager, UX/UI Designer et ingénieur full-stack senior chargé de transformer ce projet existant en une véritable plateforme appelée BLOOM.
+
+IMPORTANT :
+
+- Ne recommence PAS le projet depuis zéro.
+- Commence par analyser entièrement le code existant, son architecture, ses routes, ses composants, ses services, sa base de données, son système d'authentification et ses variables d'environnement.
+- Le projet existe déjà et certaines fonctionnalités fonctionnent. CONSERVE tout ce qui est fonctionnel.
+- Corrige ce qui doit l'être.
+- Refactorise proprement lorsque nécessaire.
+- Ne supprime aucune fonctionnalité existante sans raison technique claire.
+- Ne crée pas de fausses fonctionnalités qui donnent l'impression de fonctionner alors qu'elles ne sont pas connectées au backend.
+- Tout ce qui est développé doit être réellement fonctionnel ou clairement marqué comme fonctionnalité future.
+- Ne te contente pas de me fournir un plan : EXÉCUTE le travail directement dans le projet.
+- Après chaque modification importante, vérifie que l'application continue de compiler.
+
+==================================================
+VISION DE BLOOM
+
+BLOOM est une plateforme web/mobile-first destinée principalement aux entrepreneurs, créateurs, étudiants et professionnels francophones, particulièrement en Afrique.
+
+Positionnement :
+
+"BLOOM aide une personne à passer de l'idée à la création, puis de la création à la vente et au développement d'une véritable activité."
+
+Signature :
+
+"Apprends. Crée. Vends. Développe."
+
+Bloom ne doit pas être présenté comme une simple marketplace ou une simple plateforme d'IA.
+
+Bloom doit progressivement devenir un écosystème permettant de :
+
+- apprendre
+- trouver des idées
+- créer des produits numériques
+- créer une boutique
+- vendre
+- recevoir des paiements
+- analyser son activité
+- être accompagné par Bloom AI
+- progresser grâce à des missions
+- découvrir d'autres créateurs
+- acheter des produits numériques
+
+L'expérience doit être SIMPLE, HUMAINE, MODERNE et PREMIUM.
+
+==================================================
+PRIORITÉ ABSOLUE
+
+Cette première exécution doit construire environ 50 à 60 % de la fondation réelle de Bloom.
+
+Priorité :
+
+1. Architecture propre
+2. Authentification
+3. Profil utilisateur
+4. Accueil personnalisé
+5. Navigation
+6. Mode vendeur
+7. Boutique
+8. Produits
+9. Marketplace
+10. Page produit
+11. Commandes
+12. Base du paiement
+13. Dashboard vendeur
+14. Bloom Coach initial
+15. UX responsive
+16. Design system Bloom
+17. Admin de base
+18. Base de données propre et extensible
+
+Ne cherche pas à terminer les fonctionnalités secondaires dans ce sprint.
+
+==================================================
+DESIGN BLOOM
+
+Créer une identité visuelle premium mais humaine.
+
+Couleurs principales :
+
+Fond sombre :
+#0D0D0D
+
+Rouge vin :
+utiliser une teinte profonde et élégante autour du bordeaux / wine red.
+
+Or :
+#C9A84C
+
+Bleu IA :
+#5B9BD5
+
+Vert succès :
+#6AAB69
+
+Rose secondaire :
+#D4628A
+
+Ne pas transformer toute l'application en interface noire froide.
+
+Utiliser :
+
+- espaces généreux
+- cartes élégantes
+- coins légèrement arrondis
+- typographie moderne
+- micro-interactions discrètes
+- icônes cohérentes
+- illustrations ou images lorsque cela apporte une vraie valeur
+- contrastes accessibles
+
+Bloom doit ressembler à une startup technologique premium créée par des humains.
+
+ÉVITER :
+
+- gradients excessifs
+- animations inutiles
+- interfaces surchargées
+- dizaines de boutons
+- langage robotique
+- aspect "template généré par IA"
+
+==================================================
+TON ET MICROCOPY
+
+Le produit doit parler comme un humain.
+
+Éviter :
+
+"Transaction effectuée avec succès."
+
+Préférer :
+
+"Paiement confirmé 🎉"
+
+Éviter :
+
+"Produit créé."
+
+Préférer :
+
+"Ton produit est prêt 🚀"
+
+Éviter :
+
+"Erreur serveur."
+
+Préférer :
+
+"Oups 😅 Quelque chose n'a pas fonctionné. Réessaie dans un instant."
+
+Éviter :
+
+"Aucun produit."
+
+Préférer :
+
+"Ta boutique est encore vide 🌱 Ton premier produit peut commencer ici."
+
+Le français doit être naturel, chaleureux et professionnel.
+
+==================================================
+ARCHITECTURE
+
+Avant de coder :
+
+1. Inspecte la structure complète du projet.
+2. Identifie le frontend.
+3. Identifie le backend.
+4. Identifie la base de données.
+5. Identifie Supabase.
+6. Identifie l'authentification existante.
+7. Identifie les routes.
+8. Identifie les services déjà présents.
+9. Identifie les composants réutilisables.
+10. Identifie les problèmes techniques existants.
+
+Le projet utilise déjà une architecture React/Vite/TypeScript et Supabase dans sa configuration actuelle.
+
+Réutilise intelligemment les services existants tels que :
+
+- sellerProfileService
+- storeService
+- productService
+- SellerDashboard
+- SellerOnboarding
+- CreateStore
+- CreateProduct
+
+mais améliore leur structure si nécessaire.
+
+L'objectif est d'éviter les doublons et les architectures contradictoires.
+
+==================================================
+AUTHENTIFICATION
+
+Utiliser une architecture cohérente autour de Supabase Auth.
+
+Ne crée PAS deux systèmes d'authentification concurrents.
+
+Le système doit permettre :
+
+- inscription
+- connexion
+- déconnexion
+- session persistante
+- récupération de session
+- protection des routes privées
+- redirection intelligente
+- profil utilisateur
+
+Après inscription, créer/récupérer le profil associé.
+
+Prévoir :
+
+users/profiles
+seller_profiles
+
+Si des tables existantes remplissent déjà ces rôles, ne les duplique pas inutilement.
+
+==================================================
+PROFIL UTILISATEUR
+
+Créer une expérience utilisateur complète.
+
+Profil :
+
+- prénom / nom
+- email
+- avatar
+- bio
+- domaine
+- niveau
+- rôle
+
+Rôles :
+
+buyer
+seller
+
+Mais l'utilisateur ne doit pas avoir l'impression de créer deux comptes.
+
+Un même compte peut progressivement devenir :
+
+acheteur + créateur + vendeur + affilié.
+
+==================================================
+ONBOARDING
+
+Après inscription, afficher un onboarding court et humain.
+
+Écran :
+
+"Bienvenue sur Bloom 👋"
+
+Question :
+
+"Qu'est-ce qui t'amène ?"
+
+Options :
+
+- Je veux apprendre
+- Je veux créer
+- Je veux vendre
+- Je veux développer mon activité
+- Je veux découvrir
+
+Puis :
+
+"Quel est ton domaine ?"
+
+Exemples :
+
+- Marketing
+- Design
+- Éducation
+- Business
+- Technologie
+- Création de contenu
+- Autre
+
+Puis niveau :
+
+- Débutant
+- Intermédiaire
+- Avancé
+
+Enregistrer ces informations dans le profil si possible.
+
+Ne pas rendre l'onboarding obligatoire de façon bloquante si cela casse les flux existants.
+
+==================================================
+ACCUEIL
+
+Créer/refondre la page d'accueil.
+
+L'accueil doit être personnalisé.
+
+Structure :
+
+Bonjour [Prénom] 👋
+
+"On avance sur quoi aujourd'hui ?"
+
+Actions rapides :
+
+💡 J'ai une idée
+📦 Je veux créer
+💰 Je veux vendre
+🎓 Je veux apprendre
+
+Puis :
+
+🎯 Ton objectif
+
+Afficher un objectif personnalisé.
+
+Exemple :
+
+"Créer ton premier produit"
+
+avec une barre de progression.
+
+Puis :
+
+🤖 Bloom te recommande
+
+Exemple :
+
+"Tu as créé ta boutique. La prochaine étape est de publier ton premier produit."
+
+Bouton :
+
+"Commencer"
+
+Puis :
+
+🔥 À découvrir
+
+Afficher quelques produits réels provenant de la base de données.
+
+NE PAS utiliser de fausses données lorsque les données réelles sont disponibles.
+
+Si la base est vide, créer un état vide élégant.
+
+==================================================
+NAVIGATION
+
+Créer une navigation cohérente desktop/mobile.
+
+Mobile :
+
+Accueil
+Découvrir
++
+Activité
+Profil
+
+Le bouton + doit ouvrir :
+
+Créer un produit
+Créer une formation
+Créer un ebook
+Trouver une idée
+Demander à Bloom AI
+
+Desktop :
+
+Logo Bloom
+
+Accueil
+Découvrir
+Créer
+Academy
+Activité
+
+Bloom Coach
+
+Profil
+Paramètres
+
+La navigation doit être responsive.
+
+==================================================
+BOUTIQUE
+
+Permettre à un vendeur de :
+
+- créer une boutique
+- modifier sa boutique
+- définir son nom
+- slug
+- description
+- logo/avatar
+- couleur de couverture
+- publier des produits
+
+Créer une belle page publique de boutique.
+
+URL logique :
+
+/shop/:slug
+
+La boutique doit afficher :
+
+- identité du créateur
+- bio
+- produits
+- produits populaires
+- informations essentielles
+
+Prévoir une page 404 élégante si la boutique n'existe pas.
+
+==================================================
+PRODUITS
+
+Créer/refondre le système de produits numériques.
+
+Un produit doit avoir au minimum :
+
+- titre
+- description
+- prix
+- catégorie
+- type
+- couverture
+- fichier
+- boutique
+- statut publication
+- date de création
+- date de modification
+
+Types possibles :
+
+ebook
+formation
+template
+pack
+guide
+checklist
+other
+
+La création doit être simple.
+
+Workflow :
+
+1. Informations
+2. Prix
+3. Fichier
+4. Couverture
+5. Aperçu
+6. Publication
+
+Prévoir :
+
+brouillon
+publié
+
+Le vendeur doit pouvoir modifier et supprimer ses propres produits selon les règles appropriées.
+
+==================================================
+PAGE PRODUIT
+
+Créer/refondre :
+
+/product/:id
+
+Afficher :
+
+- couverture
+- titre
+- créateur
+- prix
+- description
+- contenu / avantages
+- catégorie
+- avis si disponibles
+- bouton d'achat
+
+La page doit être très professionnelle.
+
+CTA principal :
+
+"Acheter maintenant"
+
+Pour un produit appartenant au vendeur connecté, proposer plutôt :
+
+"Modifier le produit"
+
+==================================================
+MARKETPLACE
+
+Créer/refondre :
+
+/discover
+
+ou /marketplace selon l'architecture existante.
+
+Fonctions :
+
+- recherche
+- catégories
+- produits populaires
+- nouveautés
+- produits recommandés si possible
+- filtres simples
+
+Catégories :
+
+Business
+Marketing
+IA
+Design
+Études
+Productivité
+Finance
+Développement
+Création de contenu
+Autre
+
+Afficher uniquement les produits publiés.
+
+Créer une expérience mobile-first.
+
+==================================================
+ACHAT
+
+Créer une structure propre pour :
+
+orders
+order_items
+payments
+
+Le parcours :
+
+Produit
+↓
+Checkout
+↓
+Paiement
+↓
+Confirmation
+↓
+Accès au produit
+
+Créer/refondre :
+
+/checkout/:id
+
+Ne pas inventer de confirmation de paiement.
+
+Si le fournisseur de paiement n'est pas encore configuré, créer une architecture propre avec un service PaymentProvider abstrait et un mode de test clairement identifiable.
+
+NE PAS prétendre qu'un paiement réel a été effectué si ce n'est pas le cas.
+
+==================================================
+LIVRAISON DIGITALE
+
+Après un achat réellement confirmé :
+
+L'acheteur doit retrouver son produit dans :
+
+/dashboard/orders
+
+ou dans un espace "Mes achats".
+
+Prévoir une structure permettant plus tard :
+
+- téléchargement sécurisé
+- URLs signées
+- expiration des liens
+- contrôle d'accès
+
+Ne jamais exposer publiquement les fichiers privés.
+
+==================================================
+DASHBOARD VENDEUR
+
+Créer/refondre :
+
+/dashboard
+
+Le dashboard doit afficher les données réelles.
+
+Cartes :
+
+Revenus
+Ventes
+Clients
+Produits
+
+Puis :
+
+Produit le plus vendu
+
+Dernières commandes
+
+Conseil Bloom
+
+Exemple :
+
+"Ton produit X semble bien fonctionner. Tu pourrais créer une version avancée."
+
+Si les données ne sont pas suffisantes, afficher un état neutre plutôt qu'inventer.
+
+Créer également les pages :
+
+/dashboard/products
+/dashboard/orders
+/dashboard/wallet
+
+Réutiliser les pages existantes lorsqu'elles fonctionnent.
+
+==================================================
+ACTIVITÉ
+
+Créer une page :
+
+/activity
+
+Elle regroupe :
+
+- ventes
+- commandes
+- progression
+- missions futures
+- statistiques importantes
+
+Créer une interface claire.
+
+==================================================
+BLOOM COACH V1
+
+Créer la première version fonctionnelle de Bloom Coach.
+
+Ce n'est PAS simplement une page "chat".
+
+Interface :
+
+"Bloom Coach 👋"
+
+"On travaille sur quoi aujourd'hui ?"
+
+Actions :
+
+🎯 Mon prochain objectif
+💡 Trouver une idée
+📦 Créer un produit
+📢 Trouver des clients
+📈 Améliorer mes ventes
+❓ Je suis bloqué
+
+Créer une interface de conversation.
+
+Préparer une architecture permettant à l'IA d'utiliser plus tard le contexte réel de l'utilisateur.
+
+Le système doit pouvoir connaître progressivement :
+
+- rôle
+- profil
+- boutique
+- produits
+- ventes
+- progression
+
+Ne pas exposer de clés API secrètes dans le frontend.
+
+Toutes les clés doivent rester côté serveur.
+
+Si le backend IA existe déjà, l'intégrer proprement au lieu de créer un deuxième système parallèle.
+
+==================================================
+DESIGN SYSTEM
+
+Créer des composants réutilisables :
+
+Button
+Input
+Textarea
+Select
+Card
+Badge
+Modal
+Dialog
+Toast
+Avatar
+ProductCard
+StoreCard
+StatCard
+EmptyState
+LoadingState
+ErrorState
+PageHeader
+BottomNavigation
+Sidebar
+
+Créer des variantes :
+
+primary
+secondary
+outline
+ghost
+danger
+
+Tous les composants doivent respecter l'identité Bloom.
+
+==================================================
+ÉTATS UX
+
+Chaque page importante doit gérer :
+
+Loading
+Success
+Empty
+Error
+
+Exemple état vide boutique :
+
+"Ta boutique est encore vide 🌱"
+
+"Ton premier produit peut commencer ici."
+
+[Créer mon produit]
+
+Ne jamais laisser une page blanche.
+
+==================================================
+RESPONSIVE
+
+L'application doit être excellente sur :
+
+- téléphone
+- tablette
+- ordinateur
+
+Priorité :
+
+MOBILE-FIRST.
+
+Vérifier particulièrement :
+
+- navigation
+- marketplace
+- page produit
+- checkout
+- création produit
+- dashboard
+
+Aucune interface ne doit nécessiter de zoom horizontal sur mobile.
+
+==================================================
+SÉCURITÉ
+
+Vérifier et renforcer :
+
+- Supabase RLS
+- permissions vendeur
+- permissions acheteur
+- accès aux fichiers
+- routes privées
+- validation frontend ET backend
+- données utilisateur
+- contrôle des propriétaires de boutiques
+- contrôle des propriétaires de produits
+
+Un vendeur ne doit pas pouvoir modifier les produits d'un autre vendeur simplement en changeant un ID.
+
+==================================================
+ADMIN V1
+
+Créer une base d'administration simple.
+
+Route :
+
+/admin
+
+Prévoir :
+
+Utilisateurs
+Produits
+Boutiques
+Commandes
+Statistiques
+
+L'admin doit être protégé par un véritable contrôle de rôle.
+
+Ne pas laisser simplement /admin accessible à n'importe quel utilisateur.
+
+==================================================
+QUALITÉ DU CODE
+
+Utiliser :
+
+TypeScript propre
+composants réutilisables
+services séparés
+validation
+gestion d'erreurs
+noms cohérents
+
+Éviter :
+
+any inutile
+duplicated code
+hardcoded user IDs
+hardcoded fake statistics
+secrets côté frontend
+console errors inutiles
+
+==================================================
+DONNÉES / DATABASE
+
+Avant de créer de nouvelles tables, inspecter les tables existantes.
+
+Architecture cible à moyen terme :
+
+users
+profiles
+seller_profiles
+stores
+products
+product_files
+categories
+orders
+order_items
+payments
+transactions
+reviews
+favorites
+courses
+lessons
+course_progress
+ai_conversations
+ai_messages
+missions
+user_missions
+achievements
+affiliate_links
+affiliate_sales
+notifications
+
+MAIS :
+
+Pour cette première exécution, ne crée que les tables réellement nécessaires au fonctionnement de V1.
+
+Ne crée pas inutilement 20 tables vides.
+
+Respecter les relations existantes et éviter les doublons.
+
+==================================================
+ROUTES CIBLES
+
+Conserver les routes fonctionnelles existantes et atteindre progressivement cette architecture :
+
+/
+/auth/login
+/auth/register
+/onboarding
+/discover
+/product/:id
+/checkout/:id
+/shop/:slug
+/dashboard
+/dashboard/products
+/dashboard/orders
+/dashboard/wallet
+/create
+/coach
+/activity
+/profile
+/admin
+
+Adapter les routes à l'architecture actuelle si nécessaire.
+
+==================================================
+IMPORTANT : DONNÉES RÉELLES
+
+Le produit doit fonctionner avec les données Supabase réelles.
+
+NE PAS créer de faux :
+
+125 000 FCFA
+32 ventes
+27 clients
+
+simplement pour rendre le dashboard joli.
+
+Si l'utilisateur n'a encore rien vendu :
+
+"0 FCFA"
+
+"0 vente"
+
+"Commence par publier ton premier produit."
+
+C'est beaucoup plus professionnel.
+
+==================================================
+AVANT DE TERMINER
+
+Après implémentation :
+
+1. Lance le build.
+2. Corrige toutes les erreurs TypeScript.
+3. Corrige les erreurs frontend.
+4. Corrige les erreurs backend.
+5. Vérifie les imports.
+6. Vérifie les routes.
+7. Vérifie les appels Supabase.
+8. Vérifie les variables d'environnement.
+9. Vérifie que les clés secrètes ne sont pas exposées.
+10. Vérifie les permissions.
+11. Vérifie les pages mobile.
+12. Vérifie les états loading/error/empty.
+13. Vérifie que les fonctionnalités existantes de Digital Bloom n'ont pas été cassées.
+
+Si une fonctionnalité existante est cassée, corrige-la avant d'ajouter une fonctionnalité secondaire.
+
+==================================================
+RÈGLE DE DÉCISION
+
+Quand tu hésites entre :
+
+A. ajouter une nouvelle fonctionnalité impressionnante mais fragile
+
+ou
+
+B. rendre une fonctionnalité existante robuste, simple et professionnelle
+
+CHOISIS B.
+
+Nous avons seulement trois grands cycles de développement.
+
+Cette première exécution doit donc laisser derrière elle une fondation réellement exploitable et extensible.
+
+==================================================
+LIVRABLE FINAL
+
+À la fin, ne me donne pas simplement "Done".
+
+Donne-moi un rapport très court contenant :
+
+1. Ce que tu as analysé.
+2. Ce que tu as réellement construit.
+3. Les fichiers principaux modifiés.
+4. Les tables créées ou modifiées.
+5. Les routes créées ou modifiées.
+6. Les problèmes corrigés.
+7. Les fonctionnalités qui restent pour le Prompt 2.
+8. Les erreurs restantes éventuelles.
+
+Mais surtout : LE TRAVAIL DOIT ÊTRE EXÉCUTÉ DANS LE PROJET, PAS SEULEMENT EXPLIQUÉ.
+
+Commence maintenant par auditer le projet existant, puis implémente cette première grande étape de Bloom.

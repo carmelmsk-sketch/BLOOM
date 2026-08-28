@@ -1,0 +1,7 @@
+import { ArrowRight, CheckCircle2, Clock3, Sprout } from 'lucide-react';
+import { Link } from 'wouter';
+import { Card, EmptyState, PageHeader } from '@/components/ui';
+
+export default function ActivityPage() {
+  return <div className="content-wrap"><PageHeader eyebrow="Ton chemin" title="Activité" description="Les petits pas deviennent visibles quand on les regarde ensemble." /><div className="card" style={{ padding: 25, maxWidth: 820 }}><div className="section-title"><div><div className="kicker">Démo locale</div><h2>Ton fil d’avancée</h2><p>Un aperçu de ce que BLOOM pourra suivre avec toi.</p></div><Sprout color="#8b6d26" /></div><div className="activity-row"><span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><CheckCircle2 color="#37633a" size={17} />Tu as découvert l’espace Bloom</span><strong>Maintenant</strong></div><div className="activity-row"><span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Clock3 color="#8b6d26" size={17} />Choisir ton premier format</span><strong>Prochaine étape</strong></div><div style={{ marginTop: 23 }}><Link href="/create" className="button button-primary" data-testid="link-activity-create">Faire un pas <ArrowRight size={15} /></Link></div></div><div style={{ marginTop: 22 }}><EmptyState title="Pas encore de journal" description="Quand tu commenceras à créer, tes étapes et tes progrès trouveront leur place ici." /></div></div>;
+}
