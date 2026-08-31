@@ -9,8 +9,11 @@ import {
   MessageCircle,
   Plus,
   UserRound,
+  Bell,
   X,
+  LayoutDashboard,
 } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 const navItems = [
   { href: '/', label: 'Accueil', icon: House },
@@ -19,14 +22,18 @@ const navItems = [
   { href: '/academy', label: 'Academy', icon: BookOpen },
   { href: '/coach', label: 'Bloom Coach', icon: MessageCircle },
   { href: '/activity', label: 'Activité', icon: Activity },
-  { href: '/profile', label: 'Profil', icon: UserRound },
+  { href: '/profile', label: 'Profil', icon: UserRound,
+  Bell,
+  Menu },
 ];
 
 const mobileItems = [
   { href: '/', label: 'Accueil', icon: House },
   { href: '/discover', label: 'Découvrir', icon: Compass },
   { href: '/activity', label: 'Activité', icon: Activity },
-  { href: '/profile', label: 'Profil', icon: UserRound },
+  { href: '/profile', label: 'Profil', icon: UserRound,
+  Bell,
+  Menu },
 ];
 
 function Brand() {
@@ -36,6 +43,7 @@ function Brand() {
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user, profile, signOut } = useAuth();
   const currentLabel = navItems.find((item) => item.href === location)?.label ?? 'BLOOM';
 
   return (
@@ -59,7 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="main-area">
         <header className="topbar">
           <div><span className="kicker">Espace créateur</span><div style={{ fontSize: 14, fontWeight: 700, marginTop: 3 }}>{currentLabel}</div></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><span className="kicker" style={{ color: '#695e55' }}>Démo locale</span><div className="avatar" data-testid="img-avatar-top">B</div></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><Link href="/notifications" className="icon-button" aria-label="Notifications"><Bell size={16} /></Link><span className="kicker" style={{ color: '#695e55' }}>{user ? (profile?.display_name ?? user.email ?? 'Mon espace') : 'Espace public'}</span><Link href={user ? '/profile' : '/auth'} className="avatar" data-testid="img-avatar-top">{profile?.display_name?.slice(0, 1).toUpperCase() ?? user?.email?.slice(0, 1).toUpperCase() ?? 'B'}</Link></div>
         </header>
         <header className="mobile-topbar">
           <Link href="/" className="brand-lockup" style={{ padding: 0 }} data-testid="link-mobile-brand"><Brand /></Link>
@@ -67,6 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         <div className={`mobile-menu ${menuOpen ? 'open' : ''}`}>
           {navItems.filter((item) => item.href !== '/create').map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} data-testid={`link-mobile-menu-${item.label.toLowerCase().replaceAll(' ', '-')}`}>{item.label}</Link>)}
+          {user ? <button className="mobile-menu-signout" onClick={() => { void signOut(); setMenuOpen(false); }}>Se déconnecter</button> : <Link href="/auth" onClick={() => setMenuOpen(false)}>Se connecter</Link>}
         </div>
         <main>{children}</main>
         <nav className="mobile-nav" aria-label="Navigation mobile">
