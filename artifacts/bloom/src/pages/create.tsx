@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ArrowRight, Check, ChevronLeft, CircleHelp } from 'lucide-react';
-import { Link } from 'wouter';
 import { Button, Card, Modal, Toast, PageHeader } from '@/components/ui';
 import { creationTypes } from '@/services/demo-content';
 import { useBloomState } from '@/hooks/use-bloom-state';
@@ -46,10 +45,22 @@ export default function CreatePage() {
           Préparer mon projet <ArrowRight size={16} />
         </Button>
       </div>
-      <div className="card fade-up delay-3" style={{ maxWidth: 920, marginTop: 56, padding: 20, display: 'flex', alignItems: 'center', gap: 13, background: '#e9ddc6' }}>
+      <div
+        className="card fade-up delay-3"
+        style={{
+          maxWidth: 920,
+          marginTop: 56,
+          padding: 20,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 13,
+          background: '#e9ddc6',
+        }}
+      >
         <CircleHelp size={19} color="#695e55" />
         <div style={{ fontSize: 14, color: '#3f2f1f' }}>
-          <strong>Tu hésites?</strong> Pas de panique. Essaie simplement ce qui te parle. Tu pourras explorer d'autres formes après.
+          <strong>Tu hésites?</strong> Pas de panique. Essaie simplement ce qui te
+          parle. Tu pourras explorer d'autres formes après.
         </div>
       </div>
       {modalOpen && selectedType && (
@@ -60,15 +71,19 @@ export default function CreatePage() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p style={{ fontSize: 14, color: '#695e55', margin: 0 }}>
-              Nous préparons actuellement les formulaires pour te guider dans la création de <strong>{selectedType.title.toLowerCase()}</strong>.
+              Nous préparons actuellement les formulaires pour te guider dans la
+              création de <strong>{selectedType.title.toLowerCase()}</strong>.
             </p>
             <p style={{ fontSize: 14, color: '#9ca3af', margin: 0 }}>
-              Pour l'instant, tu peux explorer les autres sections et revenir ici bientôt.
+              Pour l'instant, tu peux explorer les autres sections et revenir ici
+              bientôt.
             </p>
             <Button
               variant="primary"
               onClick={() => {
-                notify('Merci pour ton intérêt! Les outils arrivent bientôt.');
+                notify(
+                  'Merci pour ton intérêt! Les outils arrivent bientôt.'
+                );
                 setModalOpen(false);
               }}
               style={{ marginTop: 12 }}
