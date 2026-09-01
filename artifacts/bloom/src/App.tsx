@@ -9,6 +9,9 @@ import CoachPage from '@/pages/coach';
 import ProfilePage from '@/pages/profile';
 import ActivityPage from '@/pages/activity';
 import AcademyPage from '@/pages/academy';
+import LoginPage from '@/pages/login';
+import RegisterPage from '@/pages/register';
+import OnboardingPage from '@/pages/onboarding';
 import NotFound from '@/pages/not-found';
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
@@ -16,17 +19,42 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
+function ProtectedRoute({ path, component: Component }: { path: string; component: any }) {
+  const [location] = useLocation();
+  
+  if (location === path) {
+    const user = localStorage.getItem('bloom_user');
+    if (!user) {
+      window.location.href = '/login';
+      return null;
+    }
+  }
+  
+  return <Route path={path} component={Component} />;
+}
+
 function Router() {
-  return <RoutedErrorBoundary><AppShell><Switch>
-    <Route path="/" component={HomePage} />
-    <Route path="/discover" component={DiscoverPage} />
-    <Route path="/create" component={CreatePage} />
-    <Route path="/coach" component={CoachPage} />
-    <Route path="/profile" component={ProfilePage} />
-    <Route path="/activity" component={ActivityPage} />
-    <Route path="/academy" component={AcademyPage} />
-    <Route component={NotFound} />
-  </Switch></AppShell></RoutedErrorBoundary>;
+  return (
+    <RoutedErrorBoundary>
+      <Switch>
+        <Route path="/login" component={LoginPage} />
+        <Route path="/register" component={RegisterPage} />
+        <Route path="/onboarding" component={OnboardingPage} />
+        <AppShell>
+          <Switch>
+            <Route path="/" component={HomePage} />
+            <Route path="/discover" component={DiscoverPage} />
+            <Route path="/create" component={CreatePage} />
+            <Route path="/coach" component={CoachPage} />
+            <Route path="/profile" component={ProfilePage} />
+            <Route path="/activity" component={ActivityPage} />
+            <Route path="/academy" component={AcademyPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </AppShell>
+      </Switch>
+    </RoutedErrorBoundary>
+  );
 }
 
 function App() {
