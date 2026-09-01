@@ -14,3 +14,35 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Authentication response with session token
+ */
+export const AuthResponseSchema = zod.object({
+  user: zod.object({
+    id: zod.string().uuid(),
+    email: zod.string().email(),
+    displayName: zod.string().nullable(),
+  }),
+  token: zod.string(),
+});
+
+/**
+ * Error response
+ */
+export const ErrorResponseSchema = zod.object({
+  error: zod.string(),
+  message: zod.string(),
+});
+
+export const UnauthorizedErrorSchema = zod.object({
+  status: zod.literal(401),
+  error: zod.literal("Unauthorized"),
+  message: zod.string(),
+});
+
+export const ConflictErrorSchema = zod.object({
+  status: zod.literal(409),
+  error: zod.literal("Conflict"),
+  message: zod.string(),
+});
