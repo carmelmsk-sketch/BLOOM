@@ -1,0 +1,769 @@
+Tu es maintenant l'ingénieur principal chargé de FINALISER le projet BLOOM.
+
+IMPORTANT :
+
+- BLOOM est un projet existant qui a déjà été développé.
+- NE RECOMMENCE PAS LE PROJET DEPUIS ZÉRO.
+- NE SUPPRIME PAS les fonctionnalités existantes qui fonctionnent.
+- Conserve l'architecture actuelle autant que possible.
+- Avant toute modification importante, audite le code existant.
+- Le résultat doit être un vrai produit fonctionnel, pas seulement une maquette visuelle.
+- Travaille directement dans le dépôt actuel.
+- Utilise les outils disponibles dans Replit pour inspecter, modifier, tester et corriger le projet.
+- Ne me demande pas de confirmer chaque petite étape : avance de manière autonome.
+- Si tu rencontres un problème, diagnostique-le et corrige-le proprement.
+- À la fin, lance les vérifications TypeScript et build et corrige toutes les erreurs restantes.
+
+==================================================
+
+1. OBJECTIF GLOBAL
+   ==================================================
+
+Transformer BLOOM en une plateforme propre, cohérente, moderne et réellement utilisable permettant aux créateurs francophones de :
+
+1. créer un compte ;
+2. se connecter ;
+3. compléter leur profil/onboarding ;
+4. créer une boutique ;
+5. personnaliser leur boutique ;
+6. créer des produits numériques ;
+7. publier des produits ;
+8. afficher une boutique publique ;
+9. afficher une page produit ;
+10. gérer leurs produits ;
+11. gérer leurs commandes ;
+12. consulter leur tableau de bord ;
+13. consulter leur activité ;
+14. gérer leurs favoris ;
+15. utiliser le Coach IA ;
+16. suivre leur progression dans l'Academy ;
+17. recevoir des notifications ;
+18. disposer d'un espace administrateur ;
+19. préparer correctement le checkout et les paiements pour une future intégration.
+
+BLOOM doit donner l'impression d'un produit réellement prêt à être utilisé, même si certains services externes comme le paiement peuvent rester désactivés tant qu'aucun fournisseur n'est configuré.
+
+==================================================
+2. COMMENCER PAR UN AUDIT COMPLET
+
+Avant de modifier le code, inspecte :
+
+- package.json
+- structure du monorepo
+- artifacts/bloom
+- artifacts/api-server
+- configuration Vite
+- configuration TypeScript
+- routes frontend
+- routes backend
+- services frontend
+- hooks
+- composants UI
+- Supabase
+- schéma/base de données
+- variables d'environnement
+- système d'authentification
+- système de navigation
+- responsive design
+
+Vérifie particulièrement les fichiers suivants s'ils existent :
+
+Frontend :
+
+- artifacts/bloom/src/App.tsx
+- artifacts/bloom/src/index.css
+- artifacts/bloom/src/pages/home.tsx
+- artifacts/bloom/src/pages/login.tsx
+- artifacts/bloom/src/pages/register.tsx
+- artifacts/bloom/src/pages/onboarding.tsx
+- artifacts/bloom/src/pages/dashboard.tsx
+- artifacts/bloom/src/pages/shop.tsx
+- artifacts/bloom/src/pages/shop-public.tsx
+- artifacts/bloom/src/pages/product.tsx
+- artifacts/bloom/src/pages/create.tsx
+- artifacts/bloom/src/pages/profile.tsx
+- artifacts/bloom/src/pages/activity.tsx
+- artifacts/bloom/src/pages/notifications.tsx
+- artifacts/bloom/src/pages/academy.tsx
+- artifacts/bloom/src/pages/coach.tsx
+- artifacts/bloom/src/pages/admin.tsx
+- artifacts/bloom/src/hooks/use-auth.tsx
+- artifacts/bloom/src/services/api.ts
+
+Backend :
+
+- artifacts/api-server/src/app.ts
+- artifacts/api-server/src/routes/index.ts
+- artifacts/api-server/src/routes/auth.ts
+- artifacts/api-server/src/routes/platform.ts
+- artifacts/api-server/src/lib/supabase.ts
+
+==================================================
+3. AUTHENTIFICATION
+
+Vérifie que le système d'authentification fonctionne réellement.
+
+Il doit être possible de :
+
+- créer un compte ;
+- se connecter ;
+- récupérer la session ;
+- récupérer le profil ;
+- modifier le profil ;
+- se déconnecter ;
+- conserver la session correctement ;
+- protéger les pages privées.
+
+Vérifie notamment :
+
+GET /api/auth/session
+POST /api/auth/signout
+GET /api/profile
+PATCH /api/profile
+
+Évite d'avoir deux systèmes d'authentification concurrents.
+
+Le système actuellement utilisé par l'application doit rester cohérent avec Supabase/backend.
+
+Corrige les incohérences éventuelles entre :
+
+- localStorage
+- session backend
+- Supabase Auth
+- AuthProvider
+- ProtectedRoute
+
+Une page privée ne doit pas simplement considérer qu'un élément localStorage existe comme preuve suffisante d'authentification si le backend possède déjà un vrai système de session.
+
+==================================================
+4. BASE DE DONNÉES SUPABASE
+
+C'est une priorité.
+
+Inspecte le schéma réel de Supabase et compare-le avec ce que le backend attend.
+
+Le backend actuel utilise notamment :
+
+- profiles
+- shops
+- products
+- favorites
+- orders
+- payments
+- coach_conversations
+- coach_messages
+- lesson_progress
+- activity_events
+- notifications
+
+Vérifie que les tables réellement utilisées par le code existent et que leurs colonnes correspondent exactement aux requêtes.
+
+ATTENTION :
+Il existe potentiellement une ancienne structure utilisant "stores" et une nouvelle structure utilisant "shops".
+
+NE SUPPRIME PAS une table simplement parce qu'elle semble ancienne.
+
+Détermine quelle architecture est réellement utilisée par le frontend/backend actuel.
+
+Puis choisis UNE architecture cohérente.
+
+Si des migrations SQL sont nécessaires :
+
+- crée-les proprement ;
+- ajoute les contraintes nécessaires ;
+- ajoute les index utiles ;
+- configure les relations ;
+- configure RLS lorsque nécessaire ;
+- évite les doublons de tables ;
+- ne détruis aucune donnée existante sans raison.
+
+==================================================
+5. PROFIL ET ONBOARDING
+
+L'onboarding doit être réellement fonctionnel.
+
+Permettre à l'utilisateur de renseigner notamment :
+
+- nom/pseudo ;
+- bio ;
+- domaine ;
+- objectif ;
+- avatar si le système est disponible ;
+- statut d'onboarding.
+
+Après validation :
+
+- sauvegarder dans Supabase ;
+- mettre à jour le contexte d'authentification ;
+- rediriger correctement ;
+- afficher les informations réelles dans le profil et le dashboard.
+
+Ne laisse pas de fausses données comme :
+"Marie"
+"2 717,45 €"
+ou autres statistiques fictives présentées comme réelles.
+
+Quand il n'y a pas encore de données, afficher un état vide propre.
+
+==================================================
+6. BOUTIQUES
+
+La création de boutique doit fonctionner réellement.
+
+Fonctionnalités :
+
+- créer une boutique ;
+- nom ;
+- slug unique ;
+- description ;
+- logo si disponible ;
+- modifier la boutique ;
+- récupérer mes boutiques ;
+- afficher une boutique publique via /shop/:slug.
+
+Vérifier :
+
+GET /api/shops/mine
+POST /api/shops
+PATCH /api/shops/:id
+GET /api/shops/:slug
+
+Le slug doit être propre et stable.
+
+La boutique publique doit afficher :
+
+- identité du créateur ;
+- nom de boutique ;
+- description ;
+- produits publiés ;
+- état vide si aucun produit.
+
+==================================================
+7. PRODUITS NUMÉRIQUES
+
+La création de produit doit être réellement connectée au backend.
+
+Un produit doit pouvoir contenir au minimum :
+
+- titre ;
+- description ;
+- catégorie/type ;
+- prix ;
+- couverture ;
+- boutique ;
+- slug ;
+- statut brouillon/publié.
+
+Fonctionnalités :
+
+- créer ;
+- modifier ;
+- afficher ;
+- publier ;
+- lister ;
+- rechercher ;
+- filtrer ;
+- afficher la page publique.
+
+Vérifier les endpoints :
+
+GET /api/products
+GET /api/products/:slug
+POST /api/products
+PATCH /api/products/:id
+POST /api/products/:id/publish
+
+Important :
+ne mélange pas des noms de colonnes incompatibles comme :
+
+store_id / shop_id
+price / price_cents
+status / is_published
+owner_id / seller_id
+
+Choisis la structure réellement utilisée et rends frontend + backend + DB cohérents.
+
+Les prix doivent être manipulés de manière fiable.
+
+==================================================
+8. DASHBOARD
+
+Le dashboard doit utiliser les vraies données.
+
+Connecter :
+
+GET /api/dashboard/summary
+
+Afficher :
+
+- revenus ;
+- ventes ;
+- commandes ;
+- produits ;
+- boutiques ;
+- statut du portefeuille.
+
+Si aucune vente n'existe :
+
+Afficher par exemple :
+
+"0 FCFA"
+"0 vente"
+"0 commande"
+
+et non des chiffres inventés.
+
+Créer des états :
+
+- loading ;
+- empty ;
+- error ;
+- success.
+
+==================================================
+9. COMMANDES
+
+Connecter réellement la page commandes à :
+
+GET /api/orders/mine
+
+Afficher proprement :
+
+- commande ;
+- date ;
+- produits ;
+- montant ;
+- statut.
+
+Si aucune commande :
+afficher un état vide élégant.
+
+==================================================
+10. CHECKOUT
+
+Le paiement n'est actuellement pas nécessairement configuré.
+
+NE SIMULE PAS un paiement réel.
+
+Si aucun fournisseur n'est configuré :
+
+- conserver un checkout propre ;
+- afficher clairement que le paiement sera disponible prochainement ;
+- ne jamais faire croire qu'une transaction a été effectuée.
+
+Préparer proprement l'architecture pour :
+
+- Mobile Money ;
+- carte bancaire ;
+- éventuellement Stripe selon la configuration disponible.
+
+Ne jamais stocker de données bancaires sensibles.
+
+==================================================
+11. FAVORIS
+
+Connecter :
+
+GET /api/favorites
+POST /api/favorites/:productId
+
+Permettre :
+
+- ajouter ;
+- retirer ;
+- afficher les favoris ;
+- état vide.
+
+Le bouton favori doit refléter le vrai état backend.
+
+==================================================
+12. COACH IA
+
+Vérifier la page Coach.
+
+Elle doit permettre :
+
+- créer une conversation ;
+- envoyer un message ;
+- afficher les messages ;
+- gérer le chargement ;
+- gérer les erreurs ;
+- conserver l'historique si la base le permet.
+
+Utiliser les endpoints existants :
+
+POST /api/coach/conversations
+POST /api/coach/conversations/:id/messages
+
+Si l'intégration Gemini existe déjà :
+
+- conserver la configuration actuelle ;
+- vérifier qu'elle ne casse pas ;
+- ne jamais exposer de clé API côté frontend.
+
+Le Coach doit répondre en français, de manière claire, chaleureuse et concise.
+
+==================================================
+13. ACADEMY
+
+La page Academy doit fonctionner avec une logique de progression réelle.
+
+Connecter :
+
+POST /api/academy/lessons/:id/progress
+
+Permettre :
+
+- commencer une leçon ;
+- marquer comme terminée ;
+- enregistrer le pourcentage ;
+- afficher la progression.
+
+Créer de beaux états vides si aucun cours n'est encore configuré.
+
+==================================================
+14. ACTIVITÉ
+
+Connecter :
+
+GET /api/activity
+
+Afficher les événements réels de l'utilisateur.
+
+S'il n'y a aucune activité :
+afficher un état vide propre.
+
+==================================================
+15. NOTIFICATIONS
+
+Connecter :
+
+GET /api/notifications
+
+Afficher :
+
+- notifications ;
+- date ;
+- état lu/non lu si disponible.
+
+Créer un état vide.
+
+==================================================
+16. ADMIN
+
+L'espace admin doit être réellement protégé.
+
+Endpoint :
+
+GET /api/admin/overview
+
+Vérifier le rôle depuis le profil backend.
+
+Un utilisateur normal doit recevoir 403 et ne doit pas pouvoir accéder aux données admin.
+
+Afficher les statistiques réelles :
+
+- utilisateurs ;
+- produits ;
+- boutiques ;
+- commandes ;
+- paiements.
+
+==================================================
+17. ROUTING
+
+Vérifie toutes les routes.
+
+Routes attendues notamment :
+
+/
+/login
+/register
+/onboarding
+/discover
+/create
+/coach
+/profile
+/activity
+/academy
+/dashboard
+/shop
+/shop/:slug
+/product/:slug
+/notifications
+/admin
+
+Vérifie les erreurs 404.
+
+Vérifie également les routes protégées.
+
+Évite les redirections infinies.
+
+==================================================
+18. DESIGN
+
+Le design de BLOOM doit rester cohérent avec son identité actuelle.
+
+Direction artistique :
+
+- moderne ;
+- humain ;
+- premium ;
+- minimaliste ;
+- chaleureux ;
+- éditorial ;
+- professionnel ;
+- adapté aux créateurs francophones.
+
+Conserver la direction visuelle déjà présente plutôt que de la remplacer brutalement.
+
+Améliorer :
+
+- typographie ;
+- hiérarchie visuelle ;
+- espacements ;
+- boutons ;
+- cartes ;
+- formulaires ;
+- états loading ;
+- états vides ;
+- messages d'erreur ;
+- responsive mobile ;
+- responsive tablette ;
+- responsive desktop.
+
+Le site doit être excellent sur téléphone.
+
+Évite les interfaces trop chargées.
+
+==================================================
+19. HOME PAGE
+
+La Home doit clairement expliquer :
+
+BLOOM aide les créateurs à transformer leurs idées en projets et produits numériques.
+
+Conserver le message existant s'il est déjà cohérent.
+
+Vérifier :
+
+- hero ;
+- CTA ;
+- sections ;
+- navigation ;
+- responsive ;
+- utilisateur connecté/non connecté.
+
+Le CTA doit être cohérent :
+
+Utilisateur non connecté :
+→ inscription
+
+Utilisateur connecté :
+→ création de produit/projet
+
+Ne pas afficher de statistiques fictives.
+
+==================================================
+20. ACCESSIBILITÉ
+
+Vérifier :
+
+- labels des inputs ;
+- navigation clavier ;
+- boutons accessibles ;
+- contrastes ;
+- aria-label lorsque nécessaire ;
+- focus visible ;
+- textes alternatifs pour les images.
+
+==================================================
+21. QUALITÉ DU CODE
+
+Nettoyer :
+
+- imports inutilisés ;
+- variables inutilisées ;
+- composants morts ;
+- anciens fichiers de backup utilisés par erreur ;
+- code dupliqué ;
+- routes dupliquées ;
+- logique contradictoire ;
+- anciens noms de tables ;
+- types incohérents.
+
+Mais ne fais pas de refactor massif inutile.
+
+Priorité :
+FONCTIONNALITÉ > STABILITÉ > COHÉRENCE > DESIGN > OPTIMISATION.
+
+==================================================
+22. GESTION DES ERREURS
+
+Chaque fonctionnalité importante doit gérer :
+
+- loading ;
+- success ;
+- empty ;
+- error.
+
+Les erreurs backend doivent produire des messages compréhensibles pour l'utilisateur.
+
+Éviter les erreurs silencieuses.
+
+Ne jamais afficher une stack trace à l'utilisateur.
+
+==================================================
+23. TESTS
+
+Après les modifications, exécuter au minimum :
+
+pnpm exec tsc -p artifacts/bloom/tsconfig.json --noEmit
+
+Puis le build approprié du projet.
+
+Également vérifier :
+
+git diff --check
+
+Corriger toutes les erreurs TypeScript.
+
+Si des tests automatisés existent, les exécuter.
+
+==================================================
+24. VÉRIFICATION DES FONCTIONNALITÉS
+
+Effectuer un parcours utilisateur complet :
+
+Nouveau visiteur
+→ Home
+→ Register
+→ Onboarding
+→ Dashboard
+→ Create
+→ Create shop
+→ Create product
+→ Publish
+→ Public shop
+→ Product page
+→ Checkout
+
+Puis :
+
+Login
+→ Dashboard
+→ Profile
+→ Activity
+→ Notifications
+→ Favorites
+→ Academy
+→ Coach
+→ Orders
+
+Puis vérifier Admin avec un compte admin.
+
+==================================================
+25. DONNÉES RÉELLES VS DONNÉES DE DÉMO
+
+C'est extrêmement important.
+
+Aucune donnée de démonstration ne doit être présentée comme une donnée réelle.
+
+Si des données mockées sont nécessaires pour une fonctionnalité non encore configurée :
+
+- les isoler ;
+- les identifier clairement ;
+- prévoir un état vide ou "bientôt disponible".
+
+Supprimer les chiffres fictifs du dashboard et autres pages.
+
+==================================================
+26. SÉCURITÉ
+
+Vérifier :
+
+- auth côté serveur ;
+- permissions ;
+- ownership des boutiques ;
+- ownership des produits ;
+- accès admin ;
+- validation des entrées ;
+- protection des données privées ;
+- absence de clés secrètes dans le frontend.
+
+Un utilisateur ne doit jamais pouvoir modifier le produit ou la boutique d'un autre utilisateur simplement en changeant un ID dans une URL.
+
+==================================================
+27. PERFORMANCE
+
+Éviter :
+
+- appels API inutiles ;
+- boucles de fetch ;
+- re-render inutiles ;
+- duplication des requêtes ;
+- chargement inutile de gros composants.
+
+Mais ne sacrifie pas la stabilité pour une optimisation prématurée.
+
+==================================================
+28. FINALISATION
+
+Une fois tout corrigé :
+
+1. lance TypeScript ;
+2. lance le build ;
+3. corrige les erreurs ;
+4. vérifie les routes ;
+5. vérifie les imports ;
+6. vérifie les variables d'environnement ;
+7. vérifie le responsive ;
+8. vérifie l'authentification ;
+9. vérifie les connexions Supabase ;
+10. vérifie qu'aucune fonctionnalité existante n'a été cassée.
+
+Ensuite affiche-moi un rapport final avec exactement :
+
+✅ FONCTIONNEL
+
+Liste des fonctionnalités réellement opérationnelles.
+
+⚠️ À CONFIGURER
+
+Liste des éléments dépendant d'un service externe, par exemple paiement.
+
+🐛 PROBLÈMES CORRIGÉS
+
+Liste des principaux bugs corrigés.
+
+🗄️ BASE DE DONNÉES
+
+Tables utilisées et éventuelles migrations créées.
+
+🔐 AUTHENTIFICATION
+
+État du système de session et permissions.
+
+🧪 VALIDATION
+
+Résultat de :
+
+- TypeScript
+- Build
+- tests disponibles
+
+🚀 ÉTAT FINAL
+
+Donne une estimation honnête du niveau de préparation du produit :
+
+- prototype
+- MVP
+- beta
+- prêt pour lancement
+
+IMPORTANT FINAL :
+Ne dis pas qu'une fonctionnalité est "terminée" simplement parce que l'interface existe.
+Une fonctionnalité est terminée uniquement si :
+Frontend + Backend + Base de données + gestion d'erreurs + permissions fonctionnent ensemble.
+
+Commence maintenant par l'audit complet du projet, puis implémente les corrections et améliorations nécessaires.
