@@ -18,13 +18,6 @@ export const usersTable = pgTable(
   ])
 );
 
-export const usersRelations = relations(usersTable, ({ one, many }) => ({
-  profile: one(creatorProfilesTable),
-  onboarding: one(onboardingTable),
-  products: many(productsTable),
-  activities: many(activitiesTable),
-}));
-
 export type User = typeof usersTable.$inferSelect;
 export type InsertUser = typeof usersTable.$inferInsert;
 

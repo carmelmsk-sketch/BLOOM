@@ -1,5 +1,6 @@
 import express, { type Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -28,6 +29,7 @@ app.use(
   })
 );
 app.use(cors({ origin: true, credentials: true }));
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -48,20 +50,22 @@ app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
   logger.error({ err }, "Request error");
 
   if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
+    res.status(err.statusCode).json({
       status: err.statusCode,
       error: err.name,
       message: err.message,
       code: err.code,
     });
+    return;
   }
 
   if (err instanceof SyntaxError && "body" in err) {
-    return res.status(400).json({
+    res.status(400).json({
       status: 400,
       error: "Bad Request",
       message: "Invalid JSON in request body",
     });
+    return;
   }
 
   res.status(500).json({
@@ -69,6 +73,7 @@ app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
     error: "Internal Server Error",
     message: "An unexpected error occurred",
   });
+  return;
 });
 
 export default app;

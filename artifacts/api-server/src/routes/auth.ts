@@ -1,123 +1,141 @@
-import { Router, type IRouter, Request, Response } from "express";
-import { logger } from "../lib/logger";
-import { ValidationError, ConflictError, UnauthorizedError } from "../lib/errors";
-import { UserCreateRequestSchema, UserLoginRequestSchema } from "@workspace/db";
+import { Router, type IRouter } from "express";
+import {
+  clearSessionCookie,
+  getAuthContext,
+  sendSupabaseError,
+  setSessionCookie,
+  supabaseAuth,
+} from "../lib/supabase";
 
 const router: IRouter = Router();
 
-// Mock user store for demo purposes
-const users: Record<string, any> = {};
-
-/**
- * Register a new user
- * POST /api/auth/register
- */
-router.post("/register", async (req: Request, res: Response, next) => {
+router.post("/signup", async (req, res) => {
   try {
-    const result = UserCreateRequestSchema.safeParse(req.body);
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const displayName = typeof req.body?.displayName === "string" ? req.body.displayName.trim() : "";
 
-    if (!result.success) {
-      const message = result.error.errors
-        .map((e) => `${e.path.join(".")}: ${e.message}`)
-        .join("; ");
-      throw new ValidationError(message);
+    if (!email || !password || password.length < 8 || displayName.length < 2) {
+      res.status(400).json({
+        code: "INVALID_SIGNUP",
+        message: "Un email, un nom et un mot de passe de 8 caractères minimum sont requis.",
+      });
+      return;
     }
 
-    const { email, password, displayName } = result.data;
+    const result = await supabaseAuth<{
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+      user?: { id: string; email?: string; user_metadata?: Record<string, unknown> };
+    }>("/auth/v1/signup", {
+      method: "POST",
+      body: JSON.stringify({ email, password, data: { display_name: displayName } }),
+    });
 
-    // Check if user already exists
-    if (users[email]) {
-      throw new ConflictError("Un utilisateur avec cet email existe déjà");
+    if (!result.ok || !result.data) {
+      sendSupabaseError(res, result);
+      return;
     }
 
-    // Create user (in production, hash password and save to DB)
-    const userId = `user_${Date.now()}`;
-    users[email] = {
-      id: userId,
-      email,
-      password, // TODO: Hash password in production
-      displayName,
-      createdAt: new Date(),
-    };
-
-    logger.info({ email, userId }, "User registered");
-
+    const session = result.data;
+    if (session.access_token && session.refresh_token) {
+      setSessionCookie(res, {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires_at: Math.floor(Date.now() / 1000) + (session.expires_in ?? 3600),
+      });
+    }
     res.status(201).json({
-      user: {
-        id: userId,
-        email,
-        displayName,
-      },
-      token: `token_${userId}`, // TODO: Generate JWT token in production
+      authenticated: Boolean(session.access_token && session.refresh_token),
+      requiresEmailConfirmation: !session.access_token,
+      user: session.user ?? null,
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    res.status(502).json({
+      code: "AUTH_PROVIDER_UNAVAILABLE",
+      message: error instanceof Error ? error.message : "Le service d’authentification est indisponible.",
+    });
   }
 });
 
-/**
- * Login user
- * POST /api/auth/login
- */
-router.post("/login", async (req: Request, res: Response, next) => {
+router.post("/signin", async (req, res) => {
   try {
-    const result = UserLoginRequestSchema.safeParse(req.body);
-
-    if (!result.success) {
-      throw new ValidationError("Email et mot de passe requis");
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (!email || !password) {
+      res.status(400).json({ code: "INVALID_SIGNIN", message: "L’email et le mot de passe sont requis." });
+      return;
     }
 
-    const { email, password } = result.data;
-    const user = users[email];
-
-    if (!user || user.password !== password) {
-      // Use same error message for both cases for security
-      throw new UnauthorizedError("Email ou mot de passe incorrect");
-    }
-
-    logger.info({ email, userId: user.id }, "User logged in");
-
-    res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName,
-      },
-      token: `token_${user.id}`, // TODO: Generate JWT token in production
+    const result = await supabaseAuth<{
+      access_token: string;
+      refresh_token: string;
+      expires_in?: number;
+      user: { id: string; email?: string; user_metadata?: Record<string, unknown> };
+    }>("/auth/v1/token?grant_type=password", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
     });
-  } catch (err) {
-    next(err);
+
+    if (!result.ok || !result.data) {
+      sendSupabaseError(res, result);
+      return;
+    }
+
+    setSessionCookie(res, {
+      access_token: result.data.access_token,
+      refresh_token: result.data.refresh_token,
+      expires_at: Math.floor(Date.now() / 1000) + (result.data.expires_in ?? 3600),
+    });
+    res.json({ authenticated: true, user: result.data.user });
+  } catch (error) {
+    res.status(502).json({
+      code: "AUTH_PROVIDER_UNAVAILABLE",
+      message: error instanceof Error ? error.message : "Le service d’authentification est indisponible.",
+    });
   }
 });
 
-/**
- * Get current user
- * GET /api/auth/me
- */
-router.get("/me", (req: Request, res: Response) => {
-  if (!req.userId) {
-    return res.status(401).json({
-      status: 401,
-      error: "Unauthorized",
-      message: "No authentication token provided",
-    });
+router.get("/session", async (req, res) => {
+  const context = await getAuthContext(req, res);
+  if (!context) {
+    res.json({ authenticated: false, user: null });
+    return;
   }
+  res.json({ authenticated: true, user: context.user });
+});
 
-  // Find user by ID from mock store
-  const user = Object.values(users).find((u) => u.id === req.userId);
-
-  if (!user) {
-    return res.status(404).json({
-      status: 404,
-      error: "Not Found",
-      message: "User not found",
-    });
+router.get("/me", async (req, res) => {
+  const context = await getAuthContext(req, res);
+  if (!context) {
+    res.status(401).json({ code: "AUTH_REQUIRED", message: "Connecte-toi pour continuer." });
+    return;
   }
+  res.json({ user: context.user });
+});
 
-  res.json({
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
+router.post("/signout", async (req, res) => {
+  const context = await getAuthContext(req, res);
+  if (context) {
+    await supabaseAuth("/auth/v1/logout", { method: "POST" }, context.accessToken);
+  }
+  clearSessionCookie(res);
+  res.status(204).send();
+});
+
+// Keep the old endpoint names unavailable rather than reintroducing local/mock auth.
+router.post("/register", (_req, res) => {
+  res.status(410).json({
+    code: "AUTH_ENDPOINT_RETIRED",
+    message: "Utilise /api/auth/signup.",
+  });
+});
+
+router.post("/login", (_req, res) => {
+  res.status(410).json({
+    code: "AUTH_ENDPOINT_RETIRED",
+    message: "Utilise /api/auth/signin.",
   });
 });
 

@@ -1,162 +1,25 @@
-import { useMemo, useState } from 'react';
-import { ArrowRight, Search, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowRight, Box, LoaderCircle, Search, SlidersHorizontal } from 'lucide-react';
 import { Link } from 'wouter';
-import { Badge, Button, Card, EmptyState, Input, LoadingState, PageHeader, Toast } from '@/components/ui';
-import { categories, demoProducts } from '@/services/demo-content';
-import type { Category } from '@/types';
+import { Badge, Button, Card, EmptyState, Input, PageHeader } from '@/components/ui';
+import { apiGet, type ApiError } from '@/services/api';
+import { categories } from '@/services/demo-content';
 import { useBloomState } from '@/hooks/use-bloom-state';
 
+type Product = { id: string; title: string; description?: string; slug: string; category?: string; price_cents: number; shops?: { name?: string } };
 export default function DiscoverPage() {
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<'Tout' | Category>('Tout');
-  const [loading, setLoading] = useState(false);
-  const { notify, toast } = useBloomState();
-
-  const results = useMemo(() =>
-    demoProducts.filter((product) => {
-      const matchesCategory = category === 'Tout' || product.category === category;
-      const query = search.trim().toLowerCase();
-      return (
-        matchesCategory &&
-        (!query ||
-          `${product.title} ${product.description} ${product.category}`
-            .toLowerCase()
-            .includes(query))
-      );
-    }),
-    [category, search]
-  );
-
-  const refreshDemo = () => {
-    setLoading(true);
-    window.setTimeout(() => setLoading(false), 500);
-  };
-
-  return (
-    <div className="content-wrap">
-      <PageHeader
-        eyebrow="Découvrir"
-        title="Des idées à rencontrer."
-        description="Explore des ressources pensées par la communauté. Tout ce que tu vois ici est du contenu de démonstration, en attente d'une vraie base de données."
-      />
-      <div className="discover-toolbar">
-        <div className="input-wrap">
-          <Search />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Rechercher une ressource, un sujet..."
-            data-testid="input-discover-search"
-          />
-        </div>
-      </div>
-      <div className="category-scroll" role="list" aria-label="Catégories">
-        {categories.map((item) => (
-          <button
-            key={item}
-            className={`category-pill ${category === item ? 'active' : ''}`}
-            onClick={() => setCategory(item)}
-            data-testid={`button-category-${item.toLowerCase().replace(/\s+/g, '-')}`}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-      <div className="demo-note" data-testid="status-demo-content">
-        <strong>Contenu de démonstration.</strong> Ces produits illustrent
-        l'expérience de découverte. Aucun achat ni catalogue réel n'est actuellement
-        en place.
-      </div>
-      {loading ? (
-        <LoadingState />
-      ) : results.length > 0 ? (
-        <div className="product-grid" data-testid="list-demo-products">
-          {results.map((product) => {
-            const Icon = product.icon;
-            return (
-              <Card
-                key={product.id}
-                className="card-lift"
-                style={{ cursor: 'pointer', overflow: 'hidden' }}
-                onClick={() =>
-                  notify(`${product.title} — bientôt disponible en vrai catalogue`)
-                }
-                data-testid={`card-product-${product.id}`}
-              >
-                <div
-                  style={{
-                    height: 100,
-                    background: `linear-gradient(135deg, var(--color-${product.cover}), var(--color-${product.cover}))`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: 16,
-                  }}
-                >
-                  <Icon size={32} style={{ color: 'rgba(255, 255, 255, 0.8)' }} />
-                </div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>
-                  {product.title}
-                </h3>
-                <p style={{ fontSize: 13, color: '#695e55', margin: '0 0 12px' }}>
-                  {product.description}
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <Badge>{product.category}</Badge>
-                  </div>
-                </div>
-                <div
-                  style={{
-                    marginTop: 12,
-                    paddingTop: 12,
-                    borderTop: '1px solid rgba(13, 13, 13, 0.1)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: 13,
-                  }}
-                >
-                  <small style={{ color: '#9ca3af' }}>par {product.author}</small>
-                  <strong style={{ color: '#a89860' }}>{product.price}</strong>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <EmptyState
-          title="Aucun résultat"
-          description={`Pas de produit trouvé pour "${search}" dans la catégorie ${category}.`}
-          action={
-            <button
-              onClick={() => {
-                setSearch('');
-                setCategory('Tout');
-              }}
-              style={{
-                marginTop: 12,
-                padding: '8px 16px',
-                border: '1px solid #a89860',
-                borderRadius: 8,
-                background: 'transparent',
-                color: '#a89860',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Réinitialiser les filtres
-            </button>
-          }
-        />
-      )}
-      <div style={{ marginTop: 58, textAlign: 'center' }}>
-        <span className="kicker">La suite arrive ici</span>
-        <p className="body-copy" style={{ fontSize: 13 }}>
-          Bientôt, un espace vivant pour apprendre ensemble. Et acheter aussi.
-        </p>
-      </div>
-      <Toast message={toast} />
-    </div>
-  );
+  const [category, setCategory] = useState('Tout');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [error, setError] = useState('');
+  const { toast } = useBloomState();
+  useEffect(() => {
+    const query = new URLSearchParams();
+    if (search.trim()) query.set('search', search.trim());
+    if (category !== 'Tout') query.set('category', category);
+    setState('loading');
+    void apiGet<{ products: Product[] }>(`/products?${query.toString()}`).then((data) => { setProducts(data.products); setState('ready'); }).catch((cause: ApiError) => { setError(cause.message); setState('error'); });
+  }, [search, category]);
+  return <div className="content-wrap"><PageHeader eyebrow="Marketplace" title={<>Des créations à <em>rencontrer.</em></>} description="Découvre des produits numériques publiés par la communauté Bloom. Les résultats viennent du catalogue réel, jamais d’un chiffre inventé." action={<Button variant="outline" onClick={() => { setSearch(''); setCategory('Tout'); }}><SlidersHorizontal size={15} /> Réinitialiser</Button>} /><div className="discover-toolbar"><div className="input-wrap"><Search /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher une ressource…" aria-label="Rechercher" /></div><span className="kicker" style={{ color: '#695e55' }}>{state === 'ready' ? `${products.length} résultat${products.length > 1 ? 's' : ''}` : 'Catalogue réel'}</span></div><div className="category-scroll" role="list" aria-label="Catégories"><button className={`category-pill ${category === 'Tout' ? 'active' : ''}`} onClick={() => setCategory('Tout')}>Tout</button>{categories.map((item) => <button key={item} className={`category-pill ${category === item ? 'active' : ''}`} onClick={() => setCategory(item)}>{item}</button>)}</div>{state === 'loading' ? <div className="dashboard-loading"><LoaderCircle className="spin" size={24} /> On ouvre les découvertes…</div> : state === 'error' ? <EmptyState title="Le catalogue se prépare" description={error} action={<Link href="/auth" className="button button-outline">Se connecter</Link>} /> : products.length ? <div className="product-grid">{products.map((product) => <Card className="product-card card-lift" key={product.id}><div className="product-cover cover-wine"><Badge tone="burgundy">{product.category || 'Produit'}</Badge><Box /></div><div className="product-info"><h3>{product.title}</h3><p>{product.description || 'Une ressource pour avancer à ton rythme.'}</p><div className="product-meta"><span className="product-author">par {product.shops?.name || 'Créateur Bloom'}</span><span className="price">{new Intl.NumberFormat('fr-FR').format(product.price_cents / 100)} XOF</span></div><Link href={`/product/${product.slug}`} className="button button-ghost">Voir le produit <ArrowRight size={13} /></Link></div></Card>)}</div> : <EmptyState title="Le catalogue attend ses premières créations." description="Aucun produit publié ne correspond à ta recherche pour le moment. Tu peux préparer le tien depuis l’espace Créer." action={<Link href="/create" className="button button-primary">Créer un produit</Link>} />}<div style={{ marginTop: 58, textAlign: 'center' }}><span className="kicker">Une marketplace qui grandit avec soin</span><p className="body-copy" style={{ fontSize: 13 }}>Chaque produit affiché ici correspondra à une vraie publication et à un vrai créateur.</p></div>{toast ? <div className="toast" role="status">{toast}</div> : null}</div>;
 }

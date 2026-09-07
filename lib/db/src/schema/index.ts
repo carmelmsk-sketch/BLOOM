@@ -12,3 +12,6 @@ export * from "./products";
 
 // Activities
 export * from "./activities";
+
+// Relations
+export * from './relations';
