@@ -1,0 +1,5 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm --filter @workspace/bloom build",
+  "outputDirectory": "artifacts/bloom/dist/public"
+}
