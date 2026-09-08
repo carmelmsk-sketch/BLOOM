@@ -1,5 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { apiGet, apiPost, apiPatch, type Profile, type SessionResponse, type SessionUser } from '@/services/api';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  apiGet,
+  apiPost,
+  apiPatch,
+  type Profile,
+  type SessionResponse,
+  type SessionUser,
+  type ProfileResponse,
+} from "@/services/api";
 
 type AuthContextValue = {
   user: SessionUser | null;
@@ -20,22 +35,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+
     try {
-      const session = await apiGet<SessionResponse>('/auth/session');
-      setUser(session.authenticated ? session.user : null);
-      if (session.authenticated) {
-        try {
-          const result = await apiGet<{ profile: Profile | null; schemaReady: boolean }>('/profile');
-          setProfile(result.profile);
-          setSchemaReady(result.schemaReady);
-        } catch {
-          setProfile(null);
-          setSchemaReady(false);
-        }
-      } else {
+      const session = await apiGet<SessionResponse>("auth/session");
+
+      if (!session.authenticated || !session.user) {
+        setUser(null);
+        setProfile(null);
+        setSchemaReady(false);
+        return;
+      }
+
+      setUser(session.user);
+
+      try {
+        const result = await apiGet<ProfileResponse>("profile");
+        setProfile(result.profile);
+        setSchemaReady(result.schemaReady);
+      } catch {
         setProfile(null);
         setSchemaReady(false);
       }
+    } catch {
+      setUser(null);
+      setProfile(null);
+      setSchemaReady(false);
     } finally {
       setLoading(false);
     }
@@ -46,22 +70,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const signOut = useCallback(async () => {
-    await apiPost('/auth/signout');
-    setUser(null);
-    setProfile(null);
-    setSchemaReady(false);
+    try {
+      await apiPost<void>("auth/signout", {});
+    } finally {
+      setUser(null);
+      setProfile(null);
+      setSchemaReady(false);
+    }
   }, []);
 
-  const value = useMemo(() => ({ user, profile, schemaReady, loading, refresh, signOut }), [user, profile, schemaReady, loading, refresh, signOut]);
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const value: AuthContextValue = {
+    user,
+    profile,
+    schemaReady,
+    loading,
+    refresh,
+    signOut,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth doit être utilisé dans AuthProvider');
+
+  if (!context) {
+    throw new Error("useAuth doit être utilisé dans AuthProvider");
+  }
+
   return context;
 }
 
-export async function saveProfile(body: Partial<Profile> & { onboarding_goal?: string; onboarding_completed?: boolean }) {
-  return apiPatch<{ profile: Profile }>('/profile', body);
+export async function saveProfile(
+  body: Partial<
+    Profile & {
+      onboarding_goal?: string;
+      onboarding_completed?: boolean;
+    }
+  >,
+) {
+  const result = await apiPatch<{ profile: Profile }>("profile", body);
+  return result.profile;
 }

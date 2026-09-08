@@ -1,9 +1,10 @@
 import { ArrowRight, Compass, HeartHandshake, Lightbulb, MoveUpRight, Sparkles, Target, LogIn } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button, Card } from '@/components/ui';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function HomePage() {
-  const user = typeof window !== 'undefined' ? localStorage.getItem('bloom_user') : null;
+  const { user } = useAuth();
 
   return (
     <div className="content-wrap">
