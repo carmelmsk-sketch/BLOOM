@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      await apiPost<void>("auth/signout", {});
+      await apiPost<void>("auth/logout", {});
     } finally {
       setUser(null);
       setProfile(null);
