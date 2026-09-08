@@ -1,9 +1,7 @@
 import express, { type Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import pinoHttpModule from "pino-http";
-
-const pinoHttp = pinoHttpModule as typeof import("pino-http").default;
+import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { AppError } from "./lib/errors";
