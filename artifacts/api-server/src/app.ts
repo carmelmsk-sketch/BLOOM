@@ -1,37 +1,10 @@
 import express, { type Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import pinoHttp from "pino-http";
 import router from "./routes";
-import { logger } from "./lib/logger";
 import { AppError } from "./lib/errors";
 
 const app: Express = express();
-
-// Logging middleware
-app.use(
-  pinoHttp({
-    logger,
-    serializers: {
-      req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
-      },
-      res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
-      },
-    },
-  })
-);
-app.use(cors({ origin: true, credentials: true }));
-app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api", router);
@@ -47,7 +20,7 @@ app.use((req: Request, res: Response) => {
 
 // Error handler
 app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
-  logger.error({ err }, "Request error");
+  console.error("Request error:", err);
 
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
