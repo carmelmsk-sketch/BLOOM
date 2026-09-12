@@ -11,26 +11,75 @@ const router: IRouter = Router();
 
 router.post("/signup", async (req, res) => {
   try {
-    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
-    const password = typeof req.body?.password === "string" ? req.body.password : "";
-    const displayName = typeof req.body?.displayName === "string" ? req.body.displayName.trim() : "";
+    const firstName =
+      typeof req.body?.firstName === "string"
+        ? req.body.firstName.trim()
+        : "";
 
-    if (!email || !password || password.length < 8 || displayName.length < 2) {
+    const lastName =
+      typeof req.body?.lastName === "string"
+        ? req.body.lastName.trim()
+        : "";
+
+    const displayName =
+      typeof req.body?.displayName === "string"
+        ? req.body.displayName.trim()
+        : `${firstName} ${lastName}`.trim();
+
+    const email =
+      typeof req.body?.email === "string"
+        ? req.body.email.trim().toLowerCase()
+        : "";
+
+    const password =
+      typeof req.body?.password === "string"
+        ? req.body.password
+        : "";
+
+    const validPassword =
+      password.length >= 9 &&
+      /^[A-Z]/.test(password) &&
+      /[A-Za-z]/.test(password) &&
+      /\d/.test(password);
+
+    if (
+      !firstName ||
+      firstName.length < 2 ||
+      !lastName ||
+      lastName.length < 2 ||
+      !email ||
+      !displayName ||
+      !validPassword
+    ) {
       res.status(400).json({
         code: "INVALID_SIGNUP",
-        message: "Un email, un nom et un mot de passe de 8 caractères minimum sont requis.",
+        message:
+          "Le prénom et le nom sont requis. Le mot de passe doit contenir au moins 9 caractères, commencer par une majuscule et contenir au moins une lettre et un chiffre.",
       });
       return;
     }
 
     const result = await supabaseAuth<{
-      access_token?: string;
-      refresh_token?: string;
+      access_token: string | null;
+      refresh_token: string | null;
       expires_in?: number;
-      user?: { id: string; email?: string; user_metadata?: Record<string, unknown> };
+      user: {
+        id: string;
+        email: string;
+        email_confirmed_at?: string | null;
+        user_metadata: Record<string, unknown>;
+      } | null;
     }>("/auth/v1/signup", {
       method: "POST",
-      body: JSON.stringify({ email, password, data: { display_name: displayName } }),
+      body: JSON.stringify({
+        email,
+        password,
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          display_name: displayName,
+        },
+      }),
     });
 
     if (!result.ok || !result.data) {
@@ -39,22 +88,37 @@ router.post("/signup", async (req, res) => {
     }
 
     const session = result.data;
+
+    /*
+     * Avec Confirm Email activé, Supabase ne doit pas fournir
+     * de session avant que l'utilisateur confirme son adresse.
+     */
     if (session.access_token && session.refresh_token) {
       setSessionCookie(res, {
         access_token: session.access_token,
         refresh_token: session.refresh_token,
-        expires_at: Math.floor(Date.now() / 1000) + (session.expires_in ?? 3600),
+        expires_at:
+          Math.floor(Date.now() / 1000) +
+          (session.expires_in ?? 3600),
       });
     }
+
+    const authenticated = Boolean(
+      session.access_token && session.refresh_token
+    );
+
     res.status(201).json({
-      authenticated: Boolean(session.access_token && session.refresh_token),
-      requiresEmailConfirmation: !session.access_token,
+      authenticated,
+      requiresEmailConfirmation: !authenticated,
       user: session.user ?? null,
     });
   } catch (error) {
     res.status(502).json({
       code: "AUTH_PROVIDER_UNAVAILABLE",
-      message: error instanceof Error ? error.message : "Le service d’authentification est indisponible.",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Le service d'authentification est indisponible.",
     });
   }
 });

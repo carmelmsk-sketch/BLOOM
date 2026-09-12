@@ -1,68 +1,97 @@
-import React, { useState } from "react";
-import { ArrowRight, Mail, Lock, User } from "lucide-react";
-import { Button, Input, Card, Toast } from "@/components/ui";
-import { useBloomState } from "@/hooks/use-bloom-state";
-import { apiPost } from "@/services/api";
+import { useState } from "react"
+import { ArrowRight, Mail, Lock, User, UserRound } from "lucide-react"
+import { Button, Input, Card, Toast } from "@/components/ui"
+import { useBloomState } from "@/hooks/use-bloom-state"
+import { apiPost } from "@/services/api"
 
 type SignupResponse = {
-  authenticated: boolean;
-  user: unknown;
-};
+  authenticated: boolean
+  user: unknown
+  requiresEmailConfirmation?: boolean
+}
+
+function isValidPassword(password: string): boolean {
+  return (
+    password.length >= 9 &&
+    /^[A-Z]/.test(password) &&
+    /[A-Za-z]/.test(password) &&
+    /\d/.test(password)
+  )
+}
 
 export default function RegisterPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { notify, toast } = useBloomState();
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { notify, toast } = useBloomState()
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+    e.preventDefault()
+    setError(null)
 
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanDisplayName = displayName.trim();
+    const cleanFirstName = firstName.trim()
+    const cleanLastName = lastName.trim()
+    const cleanEmail = email.trim().toLowerCase()
 
-    if (!cleanEmail || !password || !cleanDisplayName) {
-      setError("Tous les champs sont requis.");
-      return;
+    if (!cleanFirstName || !cleanLastName || !cleanEmail || !password || !confirmPassword) {
+      setError("Tous les champs sont requis.")
+      return
     }
 
-    if (password.length < 8) {
-      setError("Le mot de passe doit contenir au moins 8 caractères.");
-      return;
+    if (cleanFirstName.length < 2 || cleanLastName.length < 2) {
+      setError("Le prénom et le nom doivent contenir au moins 2 caractères.")
+      return
     }
 
-    if (cleanDisplayName.length < 2) {
-      setError("Le nom doit contenir au moins 2 caractères.");
-      return;
+    if (!isValidPassword(password)) {
+      setError(
+        "Le mot de passe doit contenir au moins 9 caractères, commencer par une majuscule et contenir des lettres et des chiffres."
+      )
+      return
     }
 
-    setLoading(true);
+    if (password !== confirmPassword) {
+      setError("Les deux mots de passe ne correspondent pas.")
+      return
+    }
+
+    setLoading(true)
 
     try {
-      await apiPost<SignupResponse>("auth/signup", {
+      const result = await apiPost<SignupResponse>("/auth/signup", {
         email: cleanEmail,
         password,
-        displayName: cleanDisplayName,
-      });
+        firstName: cleanFirstName,
+        lastName: cleanLastName,
+        displayName: `${cleanFirstName} ${cleanLastName}`,
+      })
 
-      notify("Inscription réussie.");
+      if (result.requiresEmailConfirmation || !result.authenticated) {
+        notify("Compte créé. Vérifie ton adresse e-mail pour continuer.")
+        window.setTimeout(() => {
+          window.location.href = "/login"
+        }, 1200)
+        return
+      }
 
+      notify("Inscription réussie.")
       window.setTimeout(() => {
-        window.location.href = "/onboarding";
-      }, 300);
+        window.location.href = "/onboarding"
+      }, 500)
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
           : "Impossible de créer le compte."
-      );
+      )
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div
@@ -75,16 +104,14 @@ export default function RegisterPage() {
         padding: 32,
       }}
     >
-      <Card style={{ maxWidth: 420, width: "100%", padding: 32 }}>
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, margin: "0 0 8px" }}>
-            Créer un compte
-          </h1>
+      <Card style={{ maxWidth: 460, width: "100%", padding: 32 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
+          Créer un compte
+        </h1>
 
-          <p style={{ fontSize: 14, color: "#6b7280" }}>
-            Rejoins la communauté BLOOM
-          </p>
-        </div>
+        <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 24 }}>
+          Rejoins la communauté BLOOM
+        </p>
 
         <form
           onSubmit={handleRegister}
@@ -94,29 +121,58 @@ export default function RegisterPage() {
             gap: 16,
           }}
         >
-          <div>
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 14,
-                fontWeight: 600,
-                marginBottom: 6,
-                color: "#6d6d6d",
-              }}
-            >
-              <User size={14} /> Nom ou surnom
-            </label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                  color: "#6b6d6d",
+                }}
+              >
+                <User size={14} /> Prénom
+              </label>
 
-            <Input
-              type="text"
-              placeholder="Ton nom ou surnom"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              disabled={loading}
-              style={{ width: "100%" }}
-            />
+              <Input
+                type="text"
+                placeholder="Ton prénom"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                disabled={loading}
+                autoComplete="given-name"
+                style={{ width: "100%" }}
+              />
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                  color: "#6b6d6d",
+                }}
+              >
+                <UserRound size={14} /> Nom
+              </label>
+
+              <Input
+                type="text"
+                placeholder="Ton nom"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                disabled={loading}
+                autoComplete="family-name"
+                style={{ width: "100%" }}
+              />
+            </div>
           </div>
 
           <div>
@@ -128,7 +184,7 @@ export default function RegisterPage() {
                 fontSize: 14,
                 fontWeight: 600,
                 marginBottom: 6,
-                color: "#6d6d6d",
+                color: "#6b6d6d",
               }}
             >
               <Mail size={14} /> Email
@@ -140,6 +196,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
+              autoComplete="email"
               style={{ width: "100%" }}
             />
           </div>
@@ -153,7 +210,7 @@ export default function RegisterPage() {
                 fontSize: 14,
                 fontWeight: 600,
                 marginBottom: 6,
-                color: "#6d6d6d",
+                color: "#6b6d6d",
               }}
             >
               <Lock size={14} /> Mot de passe
@@ -161,10 +218,41 @@ export default function RegisterPage() {
 
             <Input
               type="password"
-              placeholder="Au moins 8 caractères"
+              placeholder="Ex. Bloom2026"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
+              autoComplete="new-password"
+              style={{ width: "100%" }}
+            />
+
+            <p style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>
+              9 caractères minimum, commence par une majuscule et contient des lettres et des chiffres.
+            </p>
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                marginBottom: 6,
+                color: "#6b6d6d",
+              }}
+            >
+              <Lock size={14} /> Confirmer le mot de passe
+            </label>
+
+            <Input
+              type="password"
+              placeholder="Retape ton mot de passe"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={loading}
+              autoComplete="new-password"
               style={{ width: "100%" }}
             />
           </div>
@@ -194,7 +282,7 @@ export default function RegisterPage() {
             disabled={loading}
           >
             {loading ? "Inscription en cours..." : "S'inscrire"}
-            {!loading && <ArrowRight size={16} />}
+            <ArrowRight size={16} />
           </Button>
         </form>
 
@@ -209,7 +297,7 @@ export default function RegisterPage() {
           <a
             href="/login"
             style={{
-              color: "#a0b086",
+              color: "#4b86b6",
               fontWeight: 600,
               textDecoration: "none",
             }}
@@ -221,5 +309,5 @@ export default function RegisterPage() {
         <Toast message={toast} />
       </Card>
     </div>
-  );
+  )
 }
