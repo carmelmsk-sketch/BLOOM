@@ -11,12 +11,7 @@ type SignupResponse = {
 }
 
 function isValidPassword(password: string): boolean {
-  return (
-    password.length >= 9 &&
-    /^[A-Z]/.test(password) &&
-    /[A-Za-z]/.test(password) &&
-    /\d/.test(password)
-  )
+  return password.length >= 8;
 }
 
 export default function RegisterPage() {
@@ -49,7 +44,7 @@ export default function RegisterPage() {
 
     if (!isValidPassword(password)) {
       setError(
-        "Le mot de passe doit contenir au moins 9 caractères, commencer par une majuscule et contenir des lettres et des chiffres."
+        "Le mot de passe doit contenir au moins 8 caractères."
       )
       return
     }
@@ -227,7 +222,7 @@ export default function RegisterPage() {
             />
 
             <p style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>
-              9 caractères minimum, commence par une majuscule et contient des lettres et des chiffres.
+              8 caractères minimum.
             </p>
           </div>
 

@@ -36,11 +36,7 @@ router.post("/signup", async (req, res) => {
         ? req.body.password
         : "";
 
-    const validPassword =
-      password.length >= 9 &&
-      /^[A-Z]/.test(password) &&
-      /[A-Za-z]/.test(password) &&
-      /\d/.test(password);
+  const isValidPassword = password.length >= 8;
 
     if (
       !firstName ||
@@ -49,12 +45,12 @@ router.post("/signup", async (req, res) => {
       lastName.length < 2 ||
       !email ||
       !displayName ||
-      !validPassword
+      !isValidPassword
     ) {
       res.status(400).json({
         code: "INVALID_SIGNUP",
         message:
-          "Le prénom et le nom sont requis. Le mot de passe doit contenir au moins 9 caractères, commencer par une majuscule et contenir au moins une lettre et un chiffre.",
+          "Le prénom et le nom sont requis. Le mot de passe doit contenir au moins 8 caractères.",
       });
       return;
     }
