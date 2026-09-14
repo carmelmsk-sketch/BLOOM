@@ -5,6 +5,7 @@ import router from "./routes";
 import { AppError } from "./lib/errors";
 
 const app: Express = express();
+app.use(express.json());
 
 // Routes
 app.use("/api", router);
