@@ -6,6 +6,7 @@ import { AppError } from "./lib/errors";
 
 const app: Express = express();
 app.use(express.json());
+app.use(cookieParser())
 
 // Routes
 app.use("/api", router);
