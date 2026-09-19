@@ -77,22 +77,86 @@ router.get("/shops/mine", async (req, res) => {
 });
 
 router.post("/shops", async (req, res) => {
-  const context = await requireAuth(req, res);
+  const context = await requireAuth(req, res)
   if (!context) return;
-  const body = bodyRecord(req.body);
-  if (typeof body.name !== "string" || typeof body.slug !== "string") {
-    res.status(400).json({ code: "INVALID_SHOP", message: "Le nom et le slug de la boutique sont requis." });
-    return;
+
+  const body = bodyRecord(req.body)
+
+  if (!body) {
+    res.status(400).json({
+      code: "INVALID_SHOP",
+      message: "Les données de la boutique sont invalides.",
+    })
+    return
   }
+
+  const name = typeof body.name === "string" ? body.name.trim() : ""
+  const slug = typeof body.slug === "string" ? body.slug.trim().toLowerCase() : ""
+  const description =
+    typeof body.description === "string"
+      ? body.description.trim()
+      : ""
+
+  if (!name || !slug) {
+    res.status(400).json({
+      code: "INVALID_SHOP",
+      message: "Le nom et le slug de la boutique sont requis.",
+    })
+    return
+  }
+
+  if (name.length < 2 || name.length > 80) {
+    res.status(400).json({
+      code: "INVALID_SHOP_NAME",
+      message: "Le nom de la boutique doit contenir entre 2 et 80 caractères.",
+    })
+    return
+  }
+
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    res.status(400).json({
+      code: "INVALID_SHOP_SLUG",
+      message: "Le slug doit contenir uniquement des lettres minuscules, chiffres et tirets.",
+    })
+    return
+  }
+
+  if (slug.length < 2 || slug.length > 80) {
+    res.status(400).json({
+      code: "INVALID_SHOP_SLUG",
+      message: "Le slug doit contenir entre 2 et 80 caractères.",
+    })
+    return
+  }
+
+  if (description.length > 2000) {
+    res.status(400).json({
+      code: "INVALID_SHOP_DESCRIPTION",
+      message: "La description de la boutique ne peut pas dépasser 2000 caractères.",
+    })
+    return
+  }
+
   const result = await supabaseTable<Row[]>("shops", "", {
     method: "POST",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ owner_id: context.user.id, name: body.name.trim(), slug: body.slug.trim().toLowerCase(), description: typeof body.description === "string" ? body.description : "" }),
-  }, context.accessToken);
-  if (!result.ok) { sendSupabaseError(res, result); return; }
-  res.status(201).json({ shop: asRows(result.data)[0] ?? null });
-});
+    body: JSON.stringify({
+      owner_id: context.user.id,
+      name,
+      slug,
+      description: description || null,
+    }),
+  }, context.accessToken)
 
+  if (!result.ok) {
+    sendSupabaseError(res, result)
+    return
+  }
+
+  res.status(201).json({
+    shop: asRows(result.data)[0] ?? null,
+  })
+});
 router.patch("/shops/:id", async (req, res) => {
   const context = await requireAuth(req, res);
   if (!context) return;
@@ -138,27 +202,162 @@ router.get("/products/:slug", async (req, res) => {
 });
 
 router.post("/products", async (req, res) => {
-  const context = await requireAuth(req, res);
-  if (!context) return;
-  const body = bodyRecord(req.body);
-  if (typeof body.title !== "string" || typeof body.product_type !== "string" || typeof body.price_cents !== "number") {
-    res.status(400).json({ code: "INVALID_PRODUCT", message: "Titre, type et prix requis." });
-    return;
+  const context = await requireAuth(req, res)
+  if (!context) return
+
+  const body = bodyRecord(req.body)
+
+  const title = typeof body.title === "string" ? body.title.trim() : ""
+  const description = typeof body.description === "string" ? body.description.trim() : ""
+  const productType = typeof body.product_type === "string" ? body.product_type.trim() : ""
+  const category = typeof body.category === "string" ? body.category.trim() : "Création de contenu"
+  const currency = typeof body.currency === "string" ? body.currency.trim().toUpperCase() : "XOF"
+
+  const allowedTypes = ["ebook", "formation", "pack", "template", "guide", "other"]
+  const allowedCurrencies = [
+    "XOF", "XAF", "CDF", "USD", "EUR", "GBP", "CAD", "AUD",
+    "CHF", "MAD", "DZD", "TND", "NGN", "GHS", "KES", "ZAR"
+  ]
+
+  if (!title || !productType || typeof body.price_cents !== "number") {
+    res.status(400).json({
+      code: "INVALID_PRODUCT",
+      message: "Le titre, le type de produit et le prix normal sont requis.",
+    })
+    return
   }
-  const slug = typeof body.slug === "string" && body.slug.trim() ? body.slug.trim().toLowerCase() : `${body.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${randomUUID().slice(0, 8)}`;
+
+  if (title.length < 3 || title.length > 150) {
+    res.status(400).json({
+      code: "INVALID_PRODUCT_TITLE",
+      message: "Le titre doit contenir entre 3 et 150 caractères.",
+    })
+    return
+  }
+
+  if (!allowedTypes.includes(productType)) {
+    res.status(400).json({
+      code: "INVALID_PRODUCT_TYPE",
+      message: "Le type de produit sélectionné est invalide.",
+    })
+    return
+  }
+
+  if (description.length < 20 || description.length > 10000) {
+    res.status(400).json({
+      code: "INVALID_PRODUCT_DESCRIPTION",
+      message: "La description doit contenir entre 20 et 10000 caractères.",
+    })
+    return
+  }
+
+  if (!allowedCurrencies.includes(currency)) {
+    res.status(400).json({
+      code: "INVALID_CURRENCY",
+      message: "La devise sélectionnée n'est pas disponible.",
+    })
+    return
+  }
+
+  const priceCents = Math.round(body.price_cents)
+
+  if (!Number.isFinite(priceCents) || priceCents < 55000) {
+    res.status(400).json({
+      code: "INVALID_PRODUCT_PRICE",
+      message: "Le prix normal doit être d'au moins 550.",
+    })
+    return
+  }
+
+  let promoPriceCents: number | null = null
+
+  if (body.promo_price_cents !== undefined && body.promo_price_cents !== null && body.promo_price_cents !== "") {
+    if (typeof body.promo_price_cents !== "number" || !Number.isFinite(body.promo_price_cents)) {
+      res.status(400).json({
+        code: "INVALID_PROMO_PRICE",
+        message: "Le prix promotionnel est invalide.",
+      })
+      return
+    }
+
+    promoPriceCents = Math.round(body.promo_price_cents)
+
+    if (promoPriceCents < 55000 || promoPriceCents >= priceCents) {
+      res.status(400).json({
+        code: "INVALID_PROMO_PRICE",
+        message: "Le prix promotionnel doit être d'au moins 550 et inférieur au prix normal.",
+      })
+      return
+    }
+  }
+
+  const slug = typeof body.slug === "string" && body.slug.trim()
+    ? body.slug.trim().toLowerCase()
+    : `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40)}-${Math.random().toString(36).slice(2, 8)}`
+
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 100) {
+    res.status(400).json({
+      code: "INVALID_PRODUCT_SLUG",
+      message: "Le slug du produit est invalide.",
+    })
+    return
+  }
+
+  const shopId = typeof body.shop_id === "string" && body.shop_id.trim()
+    ? body.shop_id.trim()
+    : null
+
+  if (shopId) {
+    const shopResult = await supabaseTable<Row[]>(
+      "shops",
+      `?id=eq.${encodeURIComponent(shopId)}&owner_id=eq.${encodeURIComponent(context.user.id)}&select=id`,
+      {},
+      context.accessToken
+    )
+
+    if (!shopResult.ok) {
+      sendSupabaseError(res, shopResult)
+      return
+    }
+
+    if (asRows(shopResult.data).length === 0) {
+      res.status(400).json({
+        code: "INVALID_SHOP",
+        message: "La boutique sélectionnée n'existe pas ou ne t'appartient pas.",
+      })
+      return
+    }
+  }
+
   const result = await supabaseTable<Row[]>("products", "", {
-    method: "POST", headers: { Prefer: "return=representation" },
+    method: "POST",
+    headers: { Prefer: "return=representation" },
     body: JSON.stringify({
-      owner_id: context.user.id, shop_id: typeof body.shop_id === "string" ? body.shop_id : null, slug,
-      title: body.title.trim(), description: typeof body.description === "string" ? body.description : "",
-      product_type: body.product_type, category: typeof body.category === "string" ? body.category : "Création de contenu",
-      price_cents: Math.max(0, Math.round(body.price_cents)), currency: typeof body.currency === "string" ? body.currency : "XOF",
+      owner_id: context.user.id,
+      shop_id: shopId,
+      slug,
+      title,
+      description,
+      product_type: productType,
+      category,
+      price_cents: priceCents,
+      promo_price_cents: promoPriceCents,
+      currency,
+      cover_url: typeof body.cover_url === "string" ? body.cover_url.trim() || null : null,
+      file_path: typeof body.file_path === "string" ? body.file_path.trim() || null : null,
       status: "draft",
     }),
-  }, context.accessToken);
-  if (!result.ok) { sendSupabaseError(res, result); return; }
-  res.status(201).json({ product: asRows(result.data)[0] ?? null });
-});
+  }, context.accessToken)
+
+  if (!result.ok) {
+    sendSupabaseError(res, result)
+    return
+  }
+
+  res.status(201).json({
+    product: asRows(result.data)[0] ?? null,
+  })
+})
 
 router.patch("/products/:id", async (req, res) => {
   const context = await requireAuth(req, res);
