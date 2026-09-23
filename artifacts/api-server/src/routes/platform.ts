@@ -11,6 +11,8 @@ const router: IRouter = Router();
 
 type Row = Record<string, unknown>;
 
+const PUBLIC_PRODUCT_COLUMNS = "id,slug,title,description,product_type,category,price_cents,promo_price_cents,currency,cover_url,status,shop_id,created_at";
+
 function asRows<T extends Row>(data: unknown) {
   return (Array.isArray(data) ? data : []) as T[];
 }
@@ -166,7 +168,9 @@ router.patch("/shops/:id", async (req, res) => {
     method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() }),
   }, context.accessToken);
   if (!result.ok) { sendSupabaseError(res, result); return; }
-  res.json({ shop: asRows(result.data)[0] ?? null });
+  const shop = asRows(result.data)[0];
+  if (!shop) { res.status(404).json({ code: "SHOP_NOT_FOUND", message: "Boutique introuvable." }); return; }
+  res.json({ shop });
 });
 
 router.get("/shops/:slug", async (req, res) => {
@@ -188,13 +192,13 @@ router.get("/products", async (req, res) => {
     search ? `or=(title.ilike.*${encodeURIComponent(search)}*,description.ilike.*${encodeURIComponent(search)}*)` : "",
     category ? `category=eq.${encodeURIComponent(category)}` : "",
   ].filter(Boolean).join("&");
-  const result = await supabaseTable<Row[]>("products", `?${filters}&select=*,shops(name,slug)&order=created_at.desc`, {}, context?.accessToken);
+  const result = await supabaseTable<Row[]>("products", `?${filters}&select=${mine ? "*" : PUBLIC_PRODUCT_COLUMNS},shops(name,slug)&order=created_at.desc`, {}, context?.accessToken);
   if (!result.ok) { sendSupabaseError(res, result); return; }
   res.json({ products: asRows(result.data), demo: false });
 });
 
 router.get("/products/:slug", async (req, res) => {
-  const result = await supabaseTable<Row[]>("products", `?slug=eq.${encodeURIComponent(req.params.slug)}&status=eq.published&select=*,shops(name,slug)`, {});
+  const result = await supabaseTable<Row[]>("products", `?slug=eq.${encodeURIComponent(req.params.slug)}&status=eq.published&select=${PUBLIC_PRODUCT_COLUMNS},shops(name,slug)`, {});
   if (!result.ok) { sendSupabaseError(res, result); return; }
   const product = asRows(result.data)[0];
   if (!product) { res.status(404).json({ code: "PRODUCT_NOT_FOUND", message: "Produit introuvable." }); return; }
@@ -363,19 +367,58 @@ router.patch("/products/:id", async (req, res) => {
   const context = await requireAuth(req, res);
   if (!context) return;
   const body = bodyRecord(req.body);
-  const allowed = ["title", "description", "product_type", "category", "price_cents", "currency", "cover_url", "file_path", "shop_id"];
+  const allowed = ["title", "description", "product_type", "category", "price_cents", "promo_price_cents", "currency", "cover_url", "shop_id"];
   const payload = Object.fromEntries(allowed.filter((key) => key in body).map((key) => [key, body[key]]));
+
+  if (Object.keys(payload).length === 0) {
+    res.status(400).json({ code: "EMPTY_UPDATE", message: "Aucune modification à enregistrer." });
+    return;
+  }
+
+  const shopId = payload.shop_id;
+  if (shopId !== undefined && shopId !== null) {
+    if (typeof shopId !== "string" || !shopId.trim()) {
+      res.status(400).json({ code: "INVALID_SHOP", message: "La boutique sélectionnée est invalide." });
+      return;
+    }
+    const shopResult = await supabaseTable<Row[]>("shops", `?id=eq.${encodeURIComponent(shopId)}&owner_id=eq.${encodeURIComponent(context.user.id)}&select=id`, {}, context.accessToken);
+    if (!shopResult.ok) { sendSupabaseError(res, shopResult); return; }
+    if (asRows(shopResult.data).length === 0) {
+      res.status(400).json({ code: "INVALID_SHOP", message: "La boutique sélectionnée n'existe pas ou ne t'appartient pas." });
+      return;
+    }
+  }
+
   const result = await supabaseTable<Row[]>("products", `?id=eq.${encodeURIComponent(req.params.id)}&owner_id=eq.${encodeURIComponent(context.user.id)}`, {
     method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() }),
   }, context.accessToken);
   if (!result.ok) { sendSupabaseError(res, result); return; }
-  res.json({ product: asRows(result.data)[0] ?? null });
+  const product = asRows(result.data)[0];
+  if (!product) { res.status(404).json({ code: "PRODUCT_NOT_FOUND", message: "Produit introuvable." }); return; }
+  res.json({ product });
 });
 
 router.post("/products/:id/publish", async (req, res) => {
   const context = await requireAuth(req, res);
   if (!context) return;
-  const result = await supabaseTable<Row[]>("products", `?id=eq.${encodeURIComponent(req.params.id)}&owner_id=eq.${encodeURIComponent(context.user.id)}`, {
+  const id = encodeURIComponent(req.params.id);
+  const owner = encodeURIComponent(context.user.id);
+
+  const found = await supabaseTable<Row[]>("products", `?id=eq.${id}&owner_id=eq.${owner}&select=id,title,description,shop_id`, {}, context.accessToken);
+  if (!found.ok) { sendSupabaseError(res, found); return; }
+  const product = asRows(found.data)[0];
+  if (!product) { res.status(404).json({ code: "PRODUCT_NOT_FOUND", message: "Produit introuvable." }); return; }
+
+  const missing: string[] = [];
+  if (typeof product.title !== "string" || product.title.trim().length < 3) missing.push("title");
+  if (typeof product.description !== "string" || product.description.trim().length < 20) missing.push("description");
+  if (!product.shop_id) missing.push("shop_id");
+  if (missing.length > 0) {
+    res.status(422).json({ code: "PRODUCT_INCOMPLETE", message: "Complète ton produit avant de le publier.", missing });
+    return;
+  }
+
+  const result = await supabaseTable<Row[]>("products", `?id=eq.${id}&owner_id=eq.${owner}`, {
     method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ status: "published", updated_at: new Date().toISOString() }),
   }, context.accessToken);
   if (!result.ok) { sendSupabaseError(res, result); return; }

@@ -79,7 +79,6 @@ export default function CreatePage() {
     country: 'BJ',
     currency: 'XOF',
     coverUrl: '',
-    filePath: '',
     shopId: '',
   })
   const [saving, setSaving] = useState(false)
@@ -159,12 +158,11 @@ export default function CreatePage() {
         promo_price_cents: promoPrice === null ? null : Math.round(promoPrice * 100),
         currency: form.currency,
         cover_url: form.coverUrl.trim() || null,
-        file_path: form.filePath.trim() || null,
         shop_id: form.shopId || null,
       })
 
       notify('Produit créé en brouillon.')
-      window.location.href = `/products/${result.product.slug}`
+      window.location.href = `/product/${result.product.slug}`
     } catch (cause) {
       const apiError = cause as ApiError
       setError(apiError.message)
@@ -372,14 +370,6 @@ export default function CreatePage() {
             </label>
 
             <label className="full">
-              <span>Chemin du fichier numérique — optionnel pour le brouillon</span>
-              <Input
-                className="input"
-                value={form.filePath}
-                onChange={(event) => updateField('filePath', event.target.value)}
-                placeholder="Ex : products/mon-guide.pdf"
-              />
-            </label>
           </div>
 
           <Button variant="primary" disabled={saving} type="submit">
