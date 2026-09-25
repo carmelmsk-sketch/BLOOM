@@ -369,7 +369,6 @@ export default function CreatePage() {
               />
             </label>
 
-            <label className="full">
           </div>
 
           <Button variant="primary" disabled={saving} type="submit">
