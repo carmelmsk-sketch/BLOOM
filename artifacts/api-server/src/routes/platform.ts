@@ -561,4 +561,10 @@ router.get("/admin/overview", async (req, res) => {
   res.json({ overview: { users: asRows(users.data).length, products: asRows(products.data).length, shops: asRows(shops.data).length, orders: asRows(orders.data).length, payments: asRows(payments.data).length } });
 });
 
+router.get("/currency-minimums", async (_req, res) => {
+  const result = await supabaseTable<Row[]>("currency_minimums", "?select=currency,min_price_cents", {});
+  if (!result.ok) { sendSupabaseError(res, result); return; }
+  res.json({ minimums: asRows(result.data) });
+});
+
 export default router;

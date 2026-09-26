@@ -83,7 +83,18 @@ export default function CreatePage() {
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [minimums, setMinimums] = useState<Record<string, number>>({})
   const { notify, toast } = useBloomState()
+
+  useEffect(() => {
+    void apiGet<{ minimums: { currency: string; min_price_cents: number }[] }>('/currency-minimums')
+      .then((data) => {
+        const map: Record<string, number> = {}
+        data.minimums.forEach((item) => { map[item.currency] = item.min_price_cents / 100 })
+        setMinimums(map)
+      })
+      .catch(() => setMinimums({}))
+  }, [])
 
   useEffect(() => {
     void apiGet<{ shops: Shop[] }>('/shops/mine')
@@ -132,17 +143,19 @@ export default function CreatePage() {
     const promoPrice = form.promoPrice.trim()
       ? Number(form.promoPrice)
       : null
+    const minPrice = minimums[form.currency] ?? 1
+    const currencyLabel = currencies.find((currency) => currency.code === form.currency)?.symbol ?? form.currency
 
-    if (!Number.isFinite(price) || price < 550) {
-      setError('Le prix normal doit être d’au moins 550.')
+    if (!Number.isFinite(price) || price < minPrice) {
+      setError(`Le prix normal doit être d’au moins ${minPrice} ${currencyLabel}.`)
       return
     }
 
     if (
       promoPrice !== null &&
-      (!Number.isFinite(promoPrice) || promoPrice < 550 || promoPrice >= price)
+      (!Number.isFinite(promoPrice) || promoPrice < minPrice || promoPrice >= price)
     ) {
-      setError('Le prix promotionnel doit être d’au moins 550 et inférieur au prix normal.')
+      setError(`Le prix promotionnel doit être d’au moins ${minPrice} ${currencyLabel} et inférieur au prix normal.`)
       return
     }
 
@@ -338,19 +351,20 @@ export default function CreatePage() {
               <span>Prix normal ({currencyInfo?.symbol ?? form.currency})</span>
               <Input
                 type="number"
-                min="550"
+                min={minimums[form.currency] ?? 1}
                 step="1"
                 value={form.price}
                 onChange={(event) => updateField('price', event.target.value)}
                 placeholder="Ex : 4000"
               />
+              <small>Minimum : {minimums[form.currency] ?? 1} {currencyInfo?.symbol ?? form.currency}</small>
             </label>
 
             <label>
               <span>Prix promotionnel — optionnel</span>
               <Input
                 type="number"
-                min="550"
+                min={minimums[form.currency] ?? 1}
                 step="1"
                 value={form.promoPrice}
                 onChange={(event) => updateField('promoPrice', event.target.value)}
