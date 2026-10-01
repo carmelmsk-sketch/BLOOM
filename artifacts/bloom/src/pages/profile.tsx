@@ -1,58 +1,206 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { Bookmark, Box, LoaderCircle, PenLine, Save, ShoppingBag, Store } from 'lucide-react';
-import { Link } from 'wouter';
-import { Badge, Button, Card, EmptyState, PageHeader } from '@/components/ui';
-import { apiGet, apiPost, type ApiError, type Profile } from '@/services/api';
-import { saveProfile, useAuth } from '@/hooks/use-auth';
+import { useEffect, useState } from 'react';
+import { formatCurrency } from '../lib/currency';
 
-type Tab = 'products' | 'purchases' | 'shop' | 'favorites';
-type Product = { id: string; title: string; status?: string; price_cents?: number; slug?: string };
-type Shop = { id: string; name: string; slug: string; status?: string };
-const tabs: { id: Tab; label: string; icon: typeof Box }[] = [
-  { id: 'products', label: 'Mes produits', icon: Box },
-  { id: 'purchases', label: 'Mes achats', icon: ShoppingBag },
-  { id: 'shop', label: 'Ma boutique', icon: Store },
-  { id: 'favorites', label: 'Mes favoris', icon: Bookmark },
-];
+interface DashboardSummary {
+  revenue_cents: number;
+  sales_count: number;
+  orders_count: number;
+  products_count: number;
+  shops_count: number;
+  wallet_status: string;
+}
 
-export default function ProfilePage() {
-  const { profile, user, refresh } = useAuth();
-  const [tab, setTab] = useState<Tab>('products');
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ display_name: profile?.display_name ?? '', username: profile?.username ?? '', bio: profile?.bio ?? '', domain: profile?.domain ?? '', level: profile?.level ?? '', avatar_url: profile?.avatar_url ?? '' });
-  const [data, setData] = useState<{ products: Product[]; shops: Shop[]; purchases: unknown[]; favorites: unknown[] }>({ products: [], shops: [], purchases: [], favorites: [] });
+interface Product {
+  id: string;
+  title: string;
+  status: 'draft' | 'published';
+}
+
+export function ProfilePage() {
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'sales'>('overview');
+
   useEffect(() => {
-    setForm({ display_name: profile?.display_name ?? '', username: profile?.username ?? '', bio: profile?.bio ?? '', domain: profile?.domain ?? '', level: profile?.level ?? '', avatar_url: profile?.avatar_url ?? '' });
-  }, [profile]);
-  useEffect(() => {
-    void Promise.all([
-      apiGet<{ products: Product[] }>('/products?mine=true'),
-      apiGet<{ shops: Shop[] }>('/shops/mine'),
-      apiGet<{ orders: unknown[] }>('/orders/mine'),
-      apiGet<{ favorites: unknown[] }>('/favorites'),
-    ]).then(([products, shops, purchases, favorites]) => setData({ products: products.products, shops: shops.shops, purchases: purchases.orders, favorites: favorites.favorites })).catch((cause: ApiError) => setError(cause.message)).finally(() => setLoading(false));
+    const fetchDashboard = async () => {
+      try {
+        const [summaryRes, productsRes] = await Promise.all([
+          fetch('/api/dashboard/summary'),
+          fetch('/api/products?mine=true'),
+        ]);
+
+        if (!summaryRes.ok || !productsRes.ok) {
+          throw new Error('Failed to load dashboard');
+        }
+
+        const summaryData = await summaryRes.json();
+        const productsData = await productsRes.json();
+
+        setSummary(summaryData.summary);
+        setProducts(productsData.products || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erreur de chargement');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboard();
   }, []);
-  async function submit(event: FormEvent) {
-    event.preventDefault(); setSaving(true); setError('');
-    try { await saveProfile(form); await refresh(); setEditing(false); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Impossible de modifier ton profil.'); } finally { setSaving(false); }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
-  async function publishProduct(id: string) {
-    setPublishingId(id); setError('');
-    try {
-      await apiPost(`/products/${id}/publish`);
-      const refreshed = await apiGet<{ products: Product[] }>('/products?mine=true');
-      setData((current) => ({ ...current, products: refreshed.products }));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Impossible de publier ce produit.');
-    } finally {
-      setPublishingId(null);
-    }
+
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>
+      </div>
+    );
   }
-  const TabIcon = tabs.find((item) => item.id === tab)?.icon ?? Box;
-  const activeItems = tab === 'products' ? data.products : tab === 'shop' ? data.shops : tab === 'purchases' ? data.purchases : data.favorites;
-  return <div className="content-wrap"><PageHeader eyebrow="Ton espace" title={<>Ton profil, ton <em>chemin.</em></>} description="Les informations que tu partages ici servent à personnaliser ton expérience Bloom." action={<Button variant={editing ? 'outline' : 'primary'} onClick={() => setEditing(!editing)}><PenLine size={15} /> {editing ? 'Fermer' : 'Modifier le profil'}</Button>} /><Card className="profile-head fade-up"><div className="avatar avatar-large">{form.avatar_url ? <img src={form.avatar_url} alt="" /> : (form.display_name || user?.email || 'B').slice(0, 1).toUpperCase()}</div><div><h2>{form.display_name || 'Ton espace Bloom'}</h2><p>{form.bio || 'Ajoute une bio pour raconter ce que tu construis.'}</p><div className="profile-tags"><Badge tone="burgundy">{form.domain || 'Domaine à choisir'}</Badge><Badge tone="blue">{form.level || 'Niveau à choisir'}</Badge></div></div></Card>{editing && <Card className="profile-editor fade-up"><div className="section-title"><div><p className="kicker">Modifier</p><h2>Ce qui te représente</h2></div><Save size={18} color="#8b6d26" /></div><form onSubmit={submit} className="form-grid"><label>Nom affiché<input className="input" value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} /></label><label>Nom court<input className="input" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} /></label><label className="full">Avatar URL<input className="input" type="url" value={form.avatar_url} onChange={(e) => setForm({ ...form, avatar_url: e.target.value })} placeholder="https://…" /></label><label className="full">Bio<textarea className="input" rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} /></label><label>Domaine<input className="input" value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} /></label><label>Niveau<input className="input" value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} /></label><Button type="submit" variant="dark" disabled={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Button></form></Card>}{error && <div className="form-status error">{error}</div>}<div className="profile-layout fade-up delay-1"><Card className="profile-section"><h3>Ton activité</h3><div className="profile-tabs">{tabs.map((item) => <button key={item.id} className={`profile-tab ${tab === item.id ? 'active' : ''}`} onClick={() => setTab(item.id)}>{item.label}</button>)}</div>{loading ? <div className="profile-loading"><LoaderCircle className="spin" size={20} /> Chargement…</div> : activeItems.length ? <div className="profile-items">{activeItems.map((item, index) => { const row = item as Product & Shop & { products?: Product; title?: string; name?: string }; const label = row.title || row.name || (row.products as Product | undefined)?.title || 'Élément Bloom'; const isProduct = tab === 'products' && typeof row.slug === 'string'; return <div className="profile-item" key={String(row.id ?? index)}><TabIcon size={16} /><div>{isProduct ? <Link href={`/product/${row.slug}`}><strong>{label}</strong></Link> : <strong>{label}</strong>}<span>{row.status || 'En préparation'}</span></div>{tab === 'products' && row.status === 'draft' && <Button variant="outline" disabled={publishingId === row.id} onClick={() => publishProduct(row.id)}>{publishingId === row.id ? 'Publication…' : 'Publier'}</Button>}</div>; })}</div> : <EmptyState title={`Pas encore de ${tabs.find((item) => item.id === tab)?.label.toLowerCase()}.`} description="Cet espace se remplira avec tes actions réelles." action={tab === 'products' ? <Link href="/create" className="button button-primary">Créer un produit</Link> : undefined} />}</Card><div><div className="level-card"><div className="kicker" style={{ color: '#d9b965' }}>Ton niveau Bloom</div><h3>{profile?.level || 'En germination'}</h3><p>{profile?.onboarding_completed ? 'Ton parcours est personnalisé. Chaque action réelle fera évoluer cet espace.' : 'Complète ton onboarding pour personnaliser ton expérience.'}</p><div className="progress"><span style={{ width: profile?.onboarding_completed ? '100%' : '8%' }} /></div><div className="level-meta"><span>Ton chemin</span><span>{profile?.onboarding_completed ? 'Onboarding terminé' : 'À commencer'}</span></div></div><Card className="activity-card"><h3>Ton email</h3><div className="activity-row"><span>{user?.email}</span><strong>Compte actif</strong></div><Link href="/dashboard" className="button button-outline" style={{ marginTop: 14 }}>Ouvrir le dashboard</Link></Card></div></div></div>;
+
+  if (!summary) {
+    return <div className="max-w-6xl mx-auto px-4 py-8">Aucune données disponibles</div>;
+  }
+
+  const publishedCount = products.filter((p) => p.status === 'published').length;
+  const draftCount = products.filter((p) => p.status === 'draft').length;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Tableau de bord</h1>
+
+        {/* Stats Cards */}
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-gray-600 text-sm font-medium mb-2">Revenus totaux</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {formatCurrency(summary.revenue_cents, 'XOF')}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-gray-600 text-sm font-medium mb-2">Ventes</p>
+            <p className="text-2xl font-bold text-gray-900">{summary.sales_count}</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-gray-600 text-sm font-medium mb-2">Produits publiés</p>
+            <p className="text-2xl font-bold text-green-600">{publishedCount}</p>
+            <p className="text-xs text-gray-500 mt-2">{draftCount} en brouillon</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-gray-600 text-sm font-medium mb-2">Boutiques</p>
+            <p className="text-2xl font-bold text-gray-900">{summary.shops_count}</p>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="border-b border-gray-200">
+            <div className="flex">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`px-6 py-4 font-medium ${
+                  activeTab === 'overview'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Aperçu
+              </button>
+              <button
+                onClick={() => setActiveTab('products')}
+                className={`px-6 py-4 font-medium ${
+                  activeTab === 'products'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Produits
+              </button>
+              <button
+                onClick={() => setActiveTab('sales')}
+                className={`px-6 py-4 font-medium ${
+                  activeTab === 'sales'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Ventes
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {activeTab === 'overview' && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900 mb-4">Résumé</h3>
+                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                  <div className="p-3 bg-gray-50 rounded">
+                    <p className="text-gray-600">Commandes totales</p>
+                    <p className="text-xl font-bold text-gray-900">{summary.orders_count}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded">
+                    <p className="text-gray-600">Statut portefeuille</p>
+                    <p className="text-lg font-semibold text-yellow-600">
+                      {summary.wallet_status === 'not_configured' ? 'Non configuré' : 'Activé'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'products' && (
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-4">Mes produits</h3>
+                {products.length === 0 ? (
+                  <p className="text-gray-600">Aucun produit pour le moment</p>
+                ) : (
+                  <div className="space-y-3">
+                    {products.map((product) => (
+                      <div
+                        key={product.id}
+                        className="p-3 border border-gray-200 rounded-lg flex justify-between items-center"
+                      >
+                        <div>
+                          <p className="font-medium text-gray-900">{product.title}</p>
+                          <p className="text-xs text-gray-600">{product.id}</p>
+                        </div>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            product.status === 'published'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}
+                        >
+                          {product.status === 'published' ? 'Publié' : 'Brouillon'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'sales' && (
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-4">Activité des ventes</h3>
+                <p className="text-gray-600">Aucune vente pour le moment</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -1,422 +1,329 @@
-import { FormEvent, useEffect, useState } from 'react'
-import { ArrowRight, Check, LoaderCircle } from 'lucide-react'
-import { Button, Card, Input, PageHeader, Toast } from '@/components/ui'
-import { creationTypes, categories } from '@/services/demo-content'
-import { apiGet, apiPost, type ApiError } from '@/services/api'
-import { useBloomState } from '@/hooks/use-bloom-state'
+import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { uploadCover } from '../lib/supabase-storage';
+import { formatCurrency, parseCurrency } from '../lib/currency';
 
-type Shop = {
-  id: string
-  name: string
-  slug: string
-  status?: string
+interface CreateProductForm {
+  title: string;
+  description: string;
+  product_type: string;
+  category: string;
+  price_cents: number;
+  promo_price_cents: number | null;
+  currency: string;
+  cover_file: File | null;
+  file_path: string | null;
+  shop_id: string;
 }
 
-const productTypeMap: Record<string, string> = {
-  ebook: 'ebook',
-  formation: 'formation',
-  pack: 'pack',
-  template: 'template',
-  guide: 'guide',
-  autre: 'other',
-}
-
-const countries = [
-  { code: 'BJ', name: 'Bénin', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'CI', name: 'Côte d’Ivoire', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'SN', name: 'Sénégal', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'TG', name: 'Togo', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'BF', name: 'Burkina Faso', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'ML', name: 'Mali', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'NE', name: 'Niger', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'CM', name: 'Cameroun', currency: 'XAF', symbol: 'FCFA' },
-  { code: 'CD', name: 'RDC', currency: 'CDF', symbol: 'FC' },
-  { code: 'US', name: 'États-Unis', currency: 'USD', symbol: '$' },
-  { code: 'CA', name: 'Canada', currency: 'CAD', symbol: '$' },
-  { code: 'GB', name: 'Royaume-Uni', currency: 'GBP', symbol: '£' },
-  { code: 'FR', name: 'France', currency: 'EUR', symbol: '€' },
-  { code: 'DE', name: 'Allemagne', currency: 'EUR', symbol: '€' },
-  { code: 'BE', name: 'Belgique', currency: 'EUR', symbol: '€' },
-  { code: 'CH', name: 'Suisse', currency: 'CHF', symbol: 'CHF' },
-  { code: 'MA', name: 'Maroc', currency: 'MAD', symbol: 'DH' },
-  { code: 'DZ', name: 'Algérie', currency: 'DZD', symbol: 'DA' },
-  { code: 'TN', name: 'Tunisie', currency: 'TND', symbol: 'DT' },
-  { code: 'NG', name: 'Nigeria', currency: 'NGN', symbol: '₦' },
-  { code: 'GH', name: 'Ghana', currency: 'GHS', symbol: 'GH₵' },
-  { code: 'KE', name: 'Kenya', currency: 'KES', symbol: 'KSh' },
-  { code: 'ZA', name: 'Afrique du Sud', currency: 'ZAR', symbol: 'R' },
-]
-
-const currencies = [
-  { code: 'XOF', label: 'Franc CFA (UEMOA)', symbol: 'F CFA' },
-  { code: 'XAF', label: 'Franc CFA (CEMAC)', symbol: 'FCFA' },
-  { code: 'CDF', label: 'Franc congolais', symbol: 'FC' },
-  { code: 'USD', label: 'Dollar américain', symbol: '$' },
-  { code: 'EUR', label: 'Euro', symbol: '€' },
-  { code: 'GBP', label: 'Livre sterling', symbol: '£' },
-  { code: 'CAD', label: 'Dollar canadien', symbol: '$' },
-  { code: 'AUD', label: 'Dollar australien', symbol: '$' },
-  { code: 'CHF', label: 'Franc suisse', symbol: 'CHF' },
-  { code: 'MAD', label: 'Dirham marocain', symbol: 'DH' },
-  { code: 'DZD', label: 'Dinar algérien', symbol: 'DA' },
-  { code: 'TND', label: 'Dinar tunisien', symbol: 'DT' },
-  { code: 'NGN', label: 'Naira nigérian', symbol: '₦' },
-  { code: 'GHS', label: 'Cedi ghanéen', symbol: 'GH₵' },
-  { code: 'KES', label: 'Shilling kényan', symbol: 'KSh' },
-  { code: 'ZAR', label: 'Rand sud-africain', symbol: 'R' },
-]
-
-export default function CreatePage() {
-  const [selected, setSelected] = useState<string | null>(null)
-  const [shops, setShops] = useState<Shop[]>([])
-  const [loadingShops, setLoadingShops] = useState(true)
-  const [form, setForm] = useState({
+export function CreateProductPage() {
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState<CreateProductForm>({
     title: '',
     description: '',
+    product_type: '',
     category: 'Création de contenu',
-    price: '',
-    promoPrice: '',
-    country: 'BJ',
+    price_cents: 55000,
+    promo_price_cents: null,
     currency: 'XOF',
-    coverUrl: '',
-    shopId: '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [minimums, setMinimums] = useState<Record<string, number>>({})
-  const { notify, toast } = useBloomState()
+    cover_file: null,
+    file_path: null,
+    shop_id: '',
+  });
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [shops, setShops] = useState<Array<{ id: string; name: string }>>([]);
 
-  useEffect(() => {
-    void apiGet<{ minimums: { currency: string; min_price_cents: number }[] }>('/currency-minimums')
-      .then((data) => {
-        const map: Record<string, number> = {}
-        data.minimums.forEach((item) => { map[item.currency] = item.min_price_cents / 100 })
-        setMinimums(map)
-      })
-      .catch(() => setMinimums({}))
-  }, [])
+  // Fetch creator's shops on mount
+  useState(() => {
+    const fetchShops = async () => {
+      try {
+        const res = await fetch('/api/shops/mine');
+        if (res.ok) {
+          const data = await res.json();
+          setShops(data.shops || []);
+          if (data.shops?.length > 0) {
+            setForm((f) => ({ ...f, shop_id: data.shops[0].id }));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load shops:', err);
+      }
+    };
+    fetchShops();
+  }, []);
 
-  useEffect(() => {
-    void apiGet<{ shops: Shop[] }>('/shops/mine')
-      .then((data) => setShops(data.shops))
-      .catch(() => setShops([]))
-      .finally(() => setLoadingShops(false))
-  }, [])
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  function updateCountry(countryCode: string) {
-    const country = countries.find((item) => item.code === countryCode)
-
-    setForm((current) => ({
-      ...current,
-      country: countryCode,
-      currency: country?.currency ?? current.currency,
-    }))
-  }
-
-  function updateField(field: keyof typeof form, value: string) {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }))
-  }
-
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    setError('')
-
-    if (!selected) {
-      setError('Choisis d’abord un format de produit.')
-      return
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Le fichier doit être une image');
+      return;
     }
 
-    if (!form.title.trim()) {
-      setError('Le titre du produit est requis.')
-      return
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('L\'image doit faire moins de 5MB');
+      return;
     }
 
-    if (form.description.trim().length < 20) {
-      setError('La description doit contenir au moins 20 caractères.')
-      return
-    }
+    setForm((f) => ({ ...f, cover_file: file }));
+    setCoverPreview(URL.createObjectURL(file));
+    setError(null);
+  };
 
-    const price = Number(form.price)
-    const promoPrice = form.promoPrice.trim()
-      ? Number(form.promoPrice)
-      : null
-    const minPrice = minimums[form.currency] ?? 1
-    const currencyLabel = currencies.find((currency) => currency.code === form.currency)?.symbol ?? form.currency
-
-    if (!Number.isFinite(price) || price < minPrice) {
-      setError(`Le prix normal doit être d’au moins ${minPrice} ${currencyLabel}.`)
-      return
-    }
-
-    if (
-      promoPrice !== null &&
-      (!Number.isFinite(promoPrice) || promoPrice < minPrice || promoPrice >= price)
-    ) {
-      setError(`Le prix promotionnel doit être d’au moins ${minPrice} ${currencyLabel} et inférieur au prix normal.`)
-      return
-    }
-
-    setSaving(true)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
     try {
-      const result = await apiPost<{ product: { id: string; slug: string } }>('/products', {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        category: form.category,
-        product_type: productTypeMap[selected] ?? 'other',
-        price_cents: Math.round(price * 100),
-        promo_price_cents: promoPrice === null ? null : Math.round(promoPrice * 100),
-        currency: form.currency,
-        cover_url: form.coverUrl.trim() || null,
-        shop_id: form.shopId || null,
-      })
+      // Validate required fields
+      if (!form.title || !form.description || !form.product_type || !form.shop_id) {
+        throw new Error('Complète tous les champs obligatoires');
+      }
 
-      notify('Produit créé en brouillon.')
-      window.location.href = `/product/${result.product.slug}`
-    } catch (cause) {
-      const apiError = cause as ApiError
-      setError(apiError.message)
+      // Upload cover if provided
+      let coverUrl: string | null = null;
+      if (form.cover_file) {
+        try {
+          const { url } = await uploadCover(form.cover_file, 'current_user_id', 'temp');
+          coverUrl = url;
+        } catch (err) {
+          throw new Error('Erreur lors de l\'upload de la couverture');
+        }
+      }
+
+      // Create product
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          product_type: form.product_type,
+          category: form.category,
+          price_cents: form.price_cents,
+          promo_price_cents: form.promo_price_cents,
+          currency: form.currency,
+          cover_url: coverUrl,
+          file_path: form.file_path,
+          shop_id: form.shop_id,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Erreur de création');
+      }
+
+      const data = await res.json();
+      navigate(`/product/${data.product.slug}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
     } finally {
-      setSaving(false)
+      setLoading(false);
     }
-  }
-
-  const currencyInfo =
-    currencies.find((currency) => currency.code === form.currency)
+  };
 
   return (
-    <div className="content-wrap">
-      <PageHeader
-        eyebrow="Créer"
-        title="Qu'est-ce que tu veux créer ?"
-        description="Présente ton produit clairement. Il sera enregistré en brouillon avant sa publication."
-        action={
-          <a href="/dashboard" className="button button-ghost">
-            Mon dashboard <ArrowRight size={15} />
-          </a>
-        }
-      />
+    <div className="max-w-2xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Créer un produit</h1>
 
-      <div className="creation-grid">
-        {creationTypes.map((type) => {
-          const Icon = type.icon
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {error}
+        </div>
+      )}
 
-          return (
-            <div
-              key={type.id}
-              className={`card-lift ${selected === type.id ? 'selected' : ''}`}
-              onClick={() => setSelected(type.id)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  setSelected(type.id)
-                }
-              }}
-            >
-              <div className="creation-icon">
-                <Icon size={16} />
-              </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Shop selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Boutique *
+          </label>
+          <select
+            value={form.shop_id}
+            onChange={(e) => setForm({ ...form, shop_id: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            required
+          >
+            <option value="">Sélectionne une boutique</option>
+            {shops.map((shop) => (
+              <option key={shop.id} value={shop.id}>
+                {shop.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-              <div className="creation-copy">
-                <h3>{type.title}</h3>
-                <p>{type.description}</p>
-              </div>
+        {/* Title */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Titre *
+          </label>
+          <input
+            type="text"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            required
+            minLength={3}
+            maxLength={150}
+          />
+        </div>
 
-              <div
-                className="check"
-                style={{
-                  right: 18,
-                  position: 'absolute',
-                  bottom: 18,
-                  color: '#6b5a2a',
-                }}
-              >
-                {selected === type.id && <Check />}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Description *
+          </label>
+          <textarea
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            required
+            minLength={20}
+            maxLength={10000}
+            rows={6}
+          />
+        </div>
 
-      <section className="product-editor fade-up">
-        <div className="section-title">
-          <h2>Donne une première forme à ton produit.</h2>
+        {/* Product type and category */}
+        <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <span className="badge">Brouillon</span>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Type de produit *
+            </label>
+            <select
+              value={form.product_type}
+              onChange={(e) => setForm({ ...form, product_type: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              required
+            >
+              <option value="">Sélectionne un type</option>
+              <option value="ebook">E-book</option>
+              <option value="formation">Formation</option>
+              <option value="pack">Pack</option>
+              <option value="template">Template</option>
+              <option value="guide">Guide</option>
+              <option value="other">Autre</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Catégorie
+            </label>
+            <input
+              type="text"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            />
           </div>
         </div>
 
-        {error && <div className="form-status error">{error}</div>}
-
-        <form className="form" onSubmit={submit}>
-          <div className="form-grid">
-            <label className="full">
-              <span>Titre</span>
-              <Input
-                className="input"
-                value={form.title}
-                onChange={(event) => updateField('title', event.target.value)}
-                placeholder="Ex : Le guide pour lancer son premier produit digital"
-                maxLength={150}
-              />
+        {/* Currency and pricing */}
+        <div className="grid md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Devise
             </label>
-
-            <label className="full">
-              <span>Description détaillée</span>
-              <textarea
-                className="input"
-                rows={7}
-                value={form.description}
-                onChange={(event) => updateField('description', event.target.value)}
-                placeholder="Explique le problème que ton produit résout, ce qu'il contient, pour qui il est destiné et le résultat recherché."
-                maxLength={10000}
-              />
-              <small>{form.description.length}/10000</small>
-            </label>
-
-            <label>
-              <span>Catégorie</span>
-              <select
-                className="input"
-                value={form.category}
-                onChange={(event) => updateField('category', event.target.value)}
-              >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Boutique</span>
-              <select
-                className="input"
-                value={form.shopId}
-                onChange={(event) => updateField('shopId', event.target.value)}
-                disabled={loadingShops}
-              >
-                <option value="">
-                  {loadingShops ? 'Chargement...' : 'Aucune boutique'}
-                </option>
-
-                {shops.map((shop) => (
-                  <option key={shop.id} value={shop.id}>
-                    {shop.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Pays</span>
-              <select
-                className="input"
-                value={form.country}
-                onChange={(event) => updateCountry(event.target.value)}
-              >
-                {countries.map((country) => (
-                  <option key={country.code} value={country.code}>
-                    {country.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Devise</span>
-              <select
-                className="input"
-                value={form.currency}
-                onChange={(event) => updateField('currency', event.target.value)}
-              >
-                {currencies.map((currency) => (
-                  <option key={currency.code} value={currency.code}>
-                    {currency.code} — {currency.label}
-                  </option>
-                ))}
-              </select>
-              <small>
-                Devise proposée : {currencyInfo?.symbol ?? form.currency}
-              </small>
-            </label>
-
-            <label>
-              <span>Prix normal ({currencyInfo?.symbol ?? form.currency})</span>
-              <Input
-                type="number"
-                min={minimums[form.currency] ?? 1}
-                step="1"
-                value={form.price}
-                onChange={(event) => updateField('price', event.target.value)}
-                placeholder="Ex : 4000"
-              />
-              <small>Minimum : {minimums[form.currency] ?? 1} {currencyInfo?.symbol ?? form.currency}</small>
-            </label>
-
-            <label>
-              <span>Prix promotionnel — optionnel</span>
-              <Input
-                type="number"
-                min={minimums[form.currency] ?? 1}
-                step="1"
-                value={form.promoPrice}
-                onChange={(event) => updateField('promoPrice', event.target.value)}
-                placeholder="Ex : 3000"
-              />
-            </label>
-
-            <label className="full">
-              <span>URL de la couverture — optionnel pour le brouillon</span>
-              <Input
-                className="input"
-                type="url"
-                value={form.coverUrl}
-                onChange={(event) => updateField('coverUrl', event.target.value)}
-                placeholder="https://..."
-              />
-            </label>
-
+            <select
+              value={form.currency}
+              onChange={(e) => setForm({ ...form, currency: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="XOF">XOF (Franc CFA)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="CAD">CAD ($)</option>
+            </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Prix normal *
+            </label>
+            <input
+              type="number"
+              value={form.price_cents / 100}
+              onChange={(e) =>
+                setForm({ ...form, price_cents: parseCurrency(e.target.value, form.currency) })
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              min={5.5}
+              step={0.01}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Prix promo (optionnel)
+            </label>
+            <input
+              type="number"
+              value={form.promo_price_cents ? form.promo_price_cents / 100 : ''}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  promo_price_cents: e.target.value
+                    ? parseCurrency(e.target.value, form.currency)
+                    : null,
+                })
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              min={5.5}
+              step={0.01}
+            />
+          </div>
+        </div>
 
-          <Button variant="primary" disabled={saving} type="submit">
-            {saving ? (
-              <>
-                <LoaderCircle className="spin" /> Enregistrement...
-              </>
-            ) : (
-              <>
-                <ArrowRight size={16} /> Enregistrer le brouillon
-              </>
+        {/* Cover image upload */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Couverture (image)
+          </label>
+          <div className="flex gap-4">
+            {coverPreview && (
+              <div className="w-24 h-32 rounded-lg overflow-hidden bg-gray-100">
+                <img src={coverPreview} alt="Preview" className="w-full h-full object-cover" />
+              </div>
             )}
-          </Button>
-
-          <p className="hint">
-            Le brouillon peut être complété avant publication.
-          </p>
-        </form>
-      </section>
-
-      <Card className="card fade-up">
-        <div className="section-title">
-          <h3>Bloom Coach peut t'aider</h3>
-          <span className="badge" style={{ color: '#6b5d2a' }}>
-            <strong>Passe en mode coach pour structurer ton idée</strong>
-          </span>
+            <div className="flex-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleCoverChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition text-gray-700"
+              >
+                {coverPreview ? 'Changer l\'image' : 'Ajouter une couverture'}
+              </button>
+            </div>
+          </div>
         </div>
 
-        <a href="/coach" className="button button-outline">
-          Demander à Bloom
-        </a>
-      </Card>
-
-      {toast && <Toast message={toast} />}
+        {/* Submit button */}
+        <div className="pt-4">
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
+          >
+            {loading ? 'Création en cours...' : 'Créer le produit'}
+          </button>
+        </div>
+      </form>
     </div>
-  )
+  );
 }
