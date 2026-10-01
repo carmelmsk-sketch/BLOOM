@@ -5,7 +5,7 @@ import {
   sendSupabaseError,
   setSessionCookie,
   supabaseAuth,
-} from "../lib/supabase";
+} from "../lib/supabase.js";
 
 const router: IRouter = Router();
 
@@ -36,7 +36,7 @@ router.post("/signup", async (req, res) => {
         ? req.body.password
         : "";
 
-  const isValidPassword = password.length >= 8;
+    const isValidPassword = password.length >= 8;
 
     if (
       !firstName ||
@@ -124,7 +124,7 @@ router.post("/signin", async (req, res) => {
     const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
     const password = typeof req.body?.password === "string" ? req.body.password : "";
     if (!email || !password) {
-      res.status(400).json({ code: "INVALID_SIGNIN", message: "L’email et le mot de passe sont requis." });
+      res.status(400).json({ code: "INVALID_SIGNIN", message: "L'email et le mot de passe sont requis." });
       return;
     }
 
@@ -152,7 +152,7 @@ router.post("/signin", async (req, res) => {
   } catch (error) {
     res.status(502).json({
       code: "AUTH_PROVIDER_UNAVAILABLE",
-      message: error instanceof Error ? error.message : "Le service d’authentification est indisponible.",
+      message: error instanceof Error ? error.message : "Le service d'authentification est indisponible.",
     });
   }
 });
