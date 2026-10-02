@@ -1,34 +1,4 @@
--- BLOOM foundation schema
--- Apply this file once in the connected Supabase SQL editor.
--- It is intentionally additive and keeps all user-owned records behind RLS.
-
 create extension if not exists pgcrypto;
-
-create or replace function public.set_updated_at()
-returns trigger
-language plpgsql
-security invoker
-as $$
-begin
-  new.updated_at = timezone('utc', now());
-  return new;
-end;
-$$;
-
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  display_name text,
-  username text unique,
-  avatar_url text,
-  bio text,
-  domain text,
-  level text,
-  onboarding_goal text,
-  onboarding_completed boolean not null default false,
-  role text not null default 'user' check (role in ('user', 'admin')),
-  created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
-);
 
 create table if not exists public.ad_campaigns (
   id uuid primary key default gen_random_uuid(),
