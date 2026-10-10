@@ -2,7 +2,7 @@ import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import router from "./routes.js";
+import router from "./routes/index.js"
 import { AppError } from "./lib/errors.js";
 
 const app = express();
