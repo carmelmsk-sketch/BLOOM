@@ -12,7 +12,7 @@ app.use(cookieParser())
 app.use("/api", router);
 
 // 404 handler
-app.use((req: express.Request, res: express.Response) => {
+app.use((req, res) => {
   res.status(404).json({
     status: 404,
     error: "Not Found",
@@ -21,7 +21,7 @@ app.use((req: express.Request, res: express.Response) => {
 });
 
 // Error handler
-app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: unknown, req, res, next) => {
   console.error("Request error:", err);
 
   if (err instanceof AppError) {
