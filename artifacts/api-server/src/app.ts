@@ -1,4 +1,5 @@
 import express from "express";
+import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import router from "./routes/index.js";
@@ -12,7 +13,7 @@ app.use(cookieParser())
 app.use("/api", router);
 
 // 404 handler
-app.use((req, res) => {
+app.use((req: Request, res: Response) => {
   res.status(404).json({
     status: 404,
     error: "Not Found",
@@ -21,7 +22,7 @@ app.use((req, res) => {
 });
 
 // Error handler
-app.use((err: unknown, req, res, next) => {
+app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
   console.error("Request error:", err);
 
   if (err instanceof AppError) {
