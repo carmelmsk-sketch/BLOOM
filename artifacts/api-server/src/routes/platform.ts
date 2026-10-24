@@ -507,3 +507,66 @@ router.post("/coach/conversations/:id/messages", async (req, res) => {
   if (!context) return;
   const body = bodyRecord(req.body);
   if (typeof body.content !== "string" || !
+!body.content.trim()) { res.status(400).json({ code: "INVALID_MESSAGE", message: "Le message ne peut pas être vide." }); return; }
+  const result = await supabaseTable<Row[]>("coach_messages", "", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ conversation_id: req.params.id, user_id: context.user.id, role: "user", content: body.content.trim() }) }, context.accessToken);
+  if (!result.ok) { sendSupabaseError(res, result); return; }
+  res.status(201).json({ message: asRows(result.data)[0] ?? null, ai_status: "not_configured", response: null });
+});
+
+router.get("/academy/courses", async (_req, res) => {
+  const result = await supabaseTable<Row[]>("courses", "?status=eq.published&select=*,lessons(*)&order=created_at.desc");
+  if (!result.ok) { sendSupabaseError(res, result); return; }
+  res.json({ courses: asRows(result.data) });
+});
+
+router.post("/academy/lessons/:id/progress", async (req, res) => {
+  const context = await requireAuth(req, res);
+  if (!context) return;
+  const body = bodyRecord(req.body);
+  const result = await supabaseTable<Row[]>("lesson_progress", "?on_conflict=user_id,lesson_id", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=representation" }, body: JSON.stringify({ user_id: context.user.id, lesson_id: req.params.id, completed: body.completed === true, progress_percent: typeof body.progress_percent === "number" ? Math.max(0, Math.min(100, Math.round(body.progress_percent))) : 0 }) }, context.accessToken);
+  if (!result.ok) { sendSupabaseError(res, result); return; }
+  res.json({ progress: asRows(result.data)[0] ?? null });
+});
+
+router.get("/notifications", async (req, res) => {
+  const context = await requireAuth(req, res);
+  if (!context) return;
+  const result = await supabaseTable<Row[]>("notifications", `?user_id=eq.${encodeURIComponent(context.user.id)}&select=*&order=created_at.desc&limit=50`, {}, context.accessToken);
+  if (!result.ok) { sendSupabaseError(res, result); return; }
+  res.json({ notifications: asRows(result.data) });
+});
+
+router.get("/activity", async (req, res) => {
+  const context = await requireAuth(req, res);
+  if (!context) return;
+  const result = await supabaseTable<Row[]>("activity_events", `?user_id=eq.${encodeURIComponent(context.user.id)}&select=*&order=created_at.desc&limit=50`, {}, context.accessToken);
+  if (!result.ok) { sendSupabaseError(res, result); return; }
+  res.json({ activity: asRows(result.data) });
+});
+
+router.get("/admin/overview", async (req, res) => {
+  const context = await requireAuth(req, res);
+  if (!context) return;
+  const profile = await currentProfile(context.user.id, context.accessToken);
+  if (!profile.ok) { sendSupabaseError(res, profile); return; }
+  const role = asRows(profile.data)[0]?.role;
+  if (role !== "admin") { res.status(403).json({ code: "ADMIN_REQUIRED", message: "Cet espace est réservé aux administrateurs." }); return; }
+  const [users, products, shops, orders, payments] = await Promise.all([
+    supabaseTable<Row[]>("profiles", "?select=id", {}, context.accessToken),
+    supabaseTable<Row[]>("products", "?select=id", {}, context.accessToken),
+    supabaseTable<Row[]>("shops", "?select=id", {}, context.accessToken),
+    supabaseTable<Row[]>("orders", "?select=id", {}, context.accessToken),
+    supabaseTable<Row[]>("payments", "?select=id", {}, context.accessToken),
+  ]);
+  const failed = [users, products, shops, orders, payments].find((result) => !result.ok);
+  if (failed) { sendSupabaseError(res, failed); return; }
+  res.json({ overview: { users: asRows(users.data).length, products: asRows(products.data).length, shops: asRows(shops.data).length, orders: asRows(orders.data).length, payments: asRows(payments.data).length } });
+});
+
+router.get("/currency-minimums", async (_req, res) => {
+  const result = await supabaseTable<Row[]>("currency_minimums", "?select=currency,min_price_cents", {});
+  if (!result.ok) { sendSupabaseError(res, result); return; }
+  res.json({ minimums: asRows(result.data) });
+});
+
+export default router;
