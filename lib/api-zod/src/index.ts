@@ -1,3 +1,3 @@
 // @ts-nocheck
 export * from "./generated/api.js";
-export * from "./generated/types.js";
+export * from "./generated/types/index.js";
