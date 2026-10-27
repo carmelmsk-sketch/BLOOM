@@ -1,10 +1,10 @@
 // @ts-nocheck
 import Router, { type IRouter } from "express";
-import healthRouter from "./health.js";
-import authRouter from "./auth.js";
-import platformRouter from "./platform.js";
-import ideasRouter from "./ideas.js";
-import adCampaignsRouter from "./ad-campaigns.js";
+import healthRouter from "./health.ts";
+import authRouter from "./auth.ts";
+import platformRouter from "./platform.ts";
+import ideasRouter from "./ideas.ts";
+import adCampaignsRouter from "./ad-campaigns.ts";
 
 const router: IRouter = Router();
 

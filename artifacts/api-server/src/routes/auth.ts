@@ -6,7 +6,7 @@ import {
   sendSupabaseError,
   setSessionCookie,
   supabaseAuth,
-} from "../lib/supabase.js";
+} from "../lib/supabase.ts";
 
 const router: IRouter = Router();
 

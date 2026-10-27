@@ -60,6 +60,14 @@ export function apiPost<T>(path: string, body?: unknown) {
   return request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
 }
 
+export async function apiUpload<T>(path: string, file: File) {
+  return request<T>(path, {
+    method: 'POST',
+    body: file,
+    headers: { 'Content-Type': file.type },
+  });
+}
+
 export function apiPatch<T>(path: string, body: unknown) {
   return request<T>(path, { method: 'PATCH', body: JSON.stringify(body) });
 }

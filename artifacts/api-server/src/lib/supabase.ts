@@ -117,7 +117,7 @@ async function supabaseFetch<T>(
       return { ok: false, status: response.status, error: error as SupabaseResult<T>["error"] };
     }
     return { ok: true, status: response.status, data: data as T };
-  } catch (error) {
+  } catch (error: unknown) {
     return {
       ok: false,
       status: 503,
@@ -141,6 +141,14 @@ export function supabaseTable<T>(
   accessToken?: string,
 ) {
   return supabaseFetch<T>(`/rest/v1/${table}${query}`, init, accessToken);
+}
+
+export function supabaseStorage<T>(
+  path: string,
+  init: RequestInit = {},
+  accessToken?: string,
+) {
+  return supabaseFetch<T>(`/storage/v1/${path.replace(/^\/+/, "")}`, init, accessToken);
 }
 
 export async function getAuthContext(req: Request, res: Response): Promise<AuthContext | null> {

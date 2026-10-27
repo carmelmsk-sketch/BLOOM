@@ -1,20 +1,19 @@
 // @ts-nocheck
-import express from "express";
-import type { Request, Response, NextFunction } from "express";
+import express, { type ErrorRequestHandler } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import router from "./routes/index.js";
-import { AppError } from "./lib/errors.js";
+import router from "./routes/index.ts";
+import { AppError } from "./lib/errors.ts";
 
 const app = express();
 app.use(express.json());
-app.use(cookieParser())
+app.use(cookieParser());
 
 // Routes
 app.use("/api", router);
 
 // 404 handler
-app.use((req: Request, res: Response) => {
+app.use((req, res) => {
   res.status(404).json({
     status: 404,
     error: "Not Found",
@@ -23,7 +22,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Error handler
-app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error("Request error:", err);
 
   if (err instanceof AppError) {
@@ -50,7 +49,8 @@ app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
     error: "Internal Server Error",
     message: "An unexpected error occurred",
   });
-  return;
-});
+};
+
+app.use(errorHandler);
 
 export default app;

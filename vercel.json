@@ -2,5 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm --filter @workspace/bloom build",
-  "outputDirectory": "artifacts/bloom/dist/public"
+  "outputDirectory": "artifacts/bloom/dist/public",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

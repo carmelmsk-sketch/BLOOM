@@ -7,6 +7,7 @@ import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
 const port = Number(process.env.PORT ?? 5173);
 const basePath = process.env.BASE_PATH ?? '/';
+const apiProxyTarget = process.env.API_PROXY_URL ?? 'http://localhost:8080';
 
 export default defineConfig({
   base: basePath,
@@ -51,7 +52,7 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: apiProxyTarget,
         changeOrigin: true,
       },
     },

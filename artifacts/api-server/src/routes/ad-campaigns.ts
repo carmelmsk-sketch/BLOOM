@@ -1,6 +1,6 @@
 // @ts-nocheck
 import Router, { type IRouter } from "express";
-import { requireAuth, sendSupabaseError, supabaseTable } from "../lib/supabase.js";
+import { requireAuth, sendSupabaseError, supabaseTable } from "../lib/supabase.ts";
 
 const router: IRouter = Router();
 const MAX_META_BUDGET_CENTS = 5000;

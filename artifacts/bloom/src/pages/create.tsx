@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { ArrowRight, Check, LoaderCircle } from 'lucide-react'
 import { Button, Card, Input, PageHeader, Toast } from '@/components/ui'
 import { creationTypes, categories } from '@/services/demo-content'
-import { apiGet, apiPost, type ApiError } from '@/services/api'
+import { apiGet, apiPost, apiUpload, type ApiError } from '@/services/api'
 import { useBloomState } from '@/hooks/use-bloom-state'
 
 type Shop = {
@@ -20,32 +20,6 @@ const productTypeMap: Record<string, string> = {
   guide: 'guide',
   autre: 'other',
 }
-
-const countries = [
-  { code: 'BJ', name: 'Bénin', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'CI', name: 'Côte d’Ivoire', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'SN', name: 'Sénégal', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'TG', name: 'Togo', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'BF', name: 'Burkina Faso', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'ML', name: 'Mali', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'NE', name: 'Niger', currency: 'XOF', symbol: 'F CFA' },
-  { code: 'CM', name: 'Cameroun', currency: 'XAF', symbol: 'FCFA' },
-  { code: 'CD', name: 'RDC', currency: 'CDF', symbol: 'FC' },
-  { code: 'US', name: 'États-Unis', currency: 'USD', symbol: '$' },
-  { code: 'CA', name: 'Canada', currency: 'CAD', symbol: '$' },
-  { code: 'GB', name: 'Royaume-Uni', currency: 'GBP', symbol: '£' },
-  { code: 'FR', name: 'France', currency: 'EUR', symbol: '€' },
-  { code: 'DE', name: 'Allemagne', currency: 'EUR', symbol: '€' },
-  { code: 'BE', name: 'Belgique', currency: 'EUR', symbol: '€' },
-  { code: 'CH', name: 'Suisse', currency: 'CHF', symbol: 'CHF' },
-  { code: 'MA', name: 'Maroc', currency: 'MAD', symbol: 'DH' },
-  { code: 'DZ', name: 'Algérie', currency: 'DZD', symbol: 'DA' },
-  { code: 'TN', name: 'Tunisie', currency: 'TND', symbol: 'DT' },
-  { code: 'NG', name: 'Nigeria', currency: 'NGN', symbol: '₦' },
-  { code: 'GH', name: 'Ghana', currency: 'GHS', symbol: 'GH₵' },
-  { code: 'KE', name: 'Kenya', currency: 'KES', symbol: 'KSh' },
-  { code: 'ZA', name: 'Afrique du Sud', currency: 'ZAR', symbol: 'R' },
-]
 
 const currencies = [
   { code: 'XOF', label: 'Franc CFA (UEMOA)', symbol: 'F CFA' },
@@ -76,7 +50,6 @@ export default function CreatePage() {
     category: 'Création de contenu',
     price: '',
     promoPrice: '',
-    country: 'BJ',
     currency: 'XOF',
     coverUrl: '',
     shopId: '',
@@ -84,6 +57,7 @@ export default function CreatePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [minimums, setMinimums] = useState<Record<string, number>>({})
+  const [coverFile, setCoverFile] = useState<File | null>(null)
   const { notify, toast } = useBloomState()
 
   useEffect(() => {
@@ -102,16 +76,6 @@ export default function CreatePage() {
       .catch(() => setShops([]))
       .finally(() => setLoadingShops(false))
   }, [])
-
-  function updateCountry(countryCode: string) {
-    const country = countries.find((item) => item.code === countryCode)
-
-    setForm((current) => ({
-      ...current,
-      country: countryCode,
-      currency: country?.currency ?? current.currency,
-    }))
-  }
 
   function updateField(field: keyof typeof form, value: string) {
     setForm((current) => ({
@@ -162,6 +126,11 @@ export default function CreatePage() {
     setSaving(true)
 
     try {
+      let coverUrl = form.coverUrl.trim() || null
+      if (coverFile) {
+        const upload = await apiUpload<{ cover_url: string }>('/uploads/cover', coverFile)
+        coverUrl = upload.cover_url
+      }
       const result = await apiPost<{ product: { id: string; slug: string } }>('/products', {
         title: form.title.trim(),
         description: form.description.trim(),
@@ -170,7 +139,7 @@ export default function CreatePage() {
         price_cents: Math.round(price * 100),
         promo_price_cents: promoPrice === null ? null : Math.round(promoPrice * 100),
         currency: form.currency,
-        cover_url: form.coverUrl.trim() || null,
+        cover_url: coverUrl,
         shop_id: form.shopId || null,
       })
 
@@ -315,21 +284,6 @@ export default function CreatePage() {
             </label>
 
             <label>
-              <span>Pays</span>
-              <select
-                className="input"
-                value={form.country}
-                onChange={(event) => updateCountry(event.target.value)}
-              >
-                {countries.map((country) => (
-                  <option key={country.code} value={country.code}>
-                    {country.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
               <span>Devise</span>
               <select
                 className="input"
@@ -373,7 +327,18 @@ export default function CreatePage() {
             </label>
 
             <label className="full">
-              <span>URL de la couverture — optionnel pour le brouillon</span>
+              <span>Couverture — JPG, PNG, WEBP ou AVIF (5 Mo max)</span>
+              <Input
+                className="input"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)}
+              />
+              {coverFile && <small>{coverFile.name} · {Math.ceil(coverFile.size / 1024)} Ko</small>}
+            </label>
+
+            <label className="full">
+              <span>URL de couverture externe — optionnel</span>
               <Input
                 className="input"
                 type="url"
