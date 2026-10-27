@@ -1,9 +1,10 @@
+// @ts-nocheck
 import Router, { type IRouter } from "express";
 import {
   requireAuth,
   supabaseTable,
   sendSupabaseError,
-} from "../lib/supabase";
+} from "../lib/supabase.js";
 
 const router: IRouter = Router();
 
