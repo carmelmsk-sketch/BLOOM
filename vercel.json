@@ -5,7 +5,7 @@
   "outputDirectory": "artifacts/bloom/dist/public",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
