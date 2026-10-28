@@ -1,0 +1,1 @@
+- [Vercel TypeScript functions](vercel-typescript-functions.md) — keep API entrypoints ESM, emitted `.ts` imports rewritten, and SPA fallbacks off `/api/`.
